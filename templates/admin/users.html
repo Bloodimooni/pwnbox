@@ -1,0 +1,60 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}User Management - Admin - PwnBox{% endblock %}
+{% block page_header %}User Management{% endblock %}
+
+{% block content %}
+<div class="card">
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Username</th>
+                <th>Display Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Last Login</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.id }}</td>
+                <td><strong>{{ user.username }}</strong></td>
+                <td>{{ user.display_name }}</td>
+                <td>{{ user.email }}</td>
+                <td>{{ user.role }}</td>
+                <td>
+                    {% if user.is_active %}
+                        <span class="badge badge-success">Active</span>
+                    {% else %}
+                        <span class="badge badge-danger">Disabled</span>
+                    {% endif %}
+                    {% if user.must_change_password %}
+                        <span class="badge badge-info" style="margin-left: 4px;">PW Reset</span>
+                    {% endif %}
+                </td>
+                <td>{{ user.created_at }}</td>
+                <td>{{ user.last_login or 'Never' }}</td>
+                <td>
+                    <div style="display: flex; gap: 4px;">
+                        <form action="{{ url_for('admin.toggle_user', user_id=user.id) }}" method="POST">
+                            <button type="submit" class="btn btn-sm {% if user.is_active %}btn-danger{% else %}btn-primary{% endif %}">
+                                {% if user.is_active %}Disable{% else %}Enable{% endif %}
+                            </button>
+                        </form>
+                        <form action="{{ url_for('admin.reset_user_password', user_id=user.id) }}" method="POST"
+                              onsubmit="return confirm('Force {{ user.username }} to change password on next login?')">
+                            <button type="submit" class="btn btn-sm btn-secondary">Force PW Change</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -1,0 +1,8 @@
+*.pdf
+*.pyc
+__pycache__/
+data/
+uploads/
+logs/
+*.db
+.env

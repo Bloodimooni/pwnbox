@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}{% if other_user %}DM - {{ other_user.display_name or other_user.username }}{% else %}Direct Messages{% endif %} - PwnBox{% endblock %}
+
+{% block page_header %}
+    {% if other_user %}
+        <span style="color: var(--text-muted);">@</span> {{ other_user.display_name or other_user.username }}
+    {% else %}
+        Direct Messages
+    {% endif %}
+{% endblock %}
+
+{% block sidebar_extra %}
+<div class="channel-section">
+    <div class="channel-section-header">
+        <span>Direct Messages</span>
+    </div>
+    <ul class="channel-list">
+        {% for conv in conversations %}
+            <li class="channel-list-item">
+                <a href="{{ url_for('dm.conversation', conversation_id=conv.id) }}"
+                   class="channel-item dm-item {% if active_conv and active_conv.id == conv.id %}active{% endif %}"
+                   data-conv-id="{{ conv.id }}">
+                    {{ conv.other_display_name or conv.other_username }}
+                </a>
+                <button class="btn-mute" data-mute-type="dm" data-mute-id="{{ conv.id }}" title="Mute conversation">&#128263;</button>
+            </li>
+        {% endfor %}
+    </ul>
+    <button class="btn-create-channel" onclick="document.getElementById('new-dm-modal').classList.add('active')">
+        + New Message
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="chat-layout" id="dm-container" data-conversation-id="{{ active_conv.id if active_conv else '' }}">
+    <div class="chat-messages" id="dm-messages">
+        {% if not active_conv and not conversations %}
+        <div style="text-align: center; padding: 60px 20px; color: var(--text-muted);">
+            <div style="font-size: 48px; margin-bottom: 16px;">&#9993;</div>
+            <h3 style="color: var(--text-secondary); margin-bottom: 8px;">No conversations yet</h3>
+            <p>Start a new direct message by clicking "+ New Message" in the sidebar.</p>
+        </div>
+        {% elif not active_conv %}
+        <div style="text-align: center; padding: 60px 20px; color: var(--text-muted);">
+            <div style="font-size: 48px; margin-bottom: 16px;">&#8592;</div>
+            <h3 style="color: var(--text-secondary); margin-bottom: 8px;">Select a conversation</h3>
+            <p>Pick a conversation from the sidebar or start a new one.</p>
+        </div>
+        {% else %}
+            {% for msg in messages %}
+            <div class="message" data-message-id="{{ msg.id }}">
+                <div class="message-avatar">{{ (msg.display_name or msg.username)[0]|upper }}</div>
+                <div class="message-body">
+                    <div class="message-header">
+                        <span class="message-author">{{ msg.display_name or msg.username }}</span>
+                        <span class="message-time">{{ msg.created_at }}</span>
+                    </div>
+                    {% if msg.content %}<div class="message-content">{{ msg.content }}</div>{% endif %}
+                    {% if msg.attachment_id %}
+                    <div class="message-attachment">
+                        <img src="{{ url_for('files.view', file_id=msg.attachment_id) }}" alt="attachment" loading="lazy">
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    {% if active_conv %}
+    <div class="typing-indicator" id="typing-indicator" style="display: none;">
+        <span class="typing-dots"><span>.</span><span>.</span><span>.</span></span>
+        <span id="typing-text"></span>
+    </div>
+    <div id="attachment-preview" class="attachment-preview" style="display: none;">
+        <img id="attachment-preview-img" src="" alt="preview">
+        <div class="attachment-preview-info">
+            <span id="attachment-preview-name"></span>
+            <button type="button" class="attachment-preview-remove" onclick="removeAttachment()">&times;</button>
+        </div>
+    </div>
+    <div class="chat-input-area">
+        <div class="chat-input-wrapper">
+            <input type="file" id="file-input" accept="image/png,image/jpeg,image/gif,image/webp" style="display: none;">
+            <button type="button" class="btn-attach" onclick="document.getElementById('file-input').click()" title="Attach image">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                    <polyline points="21 15 16 10 5 21"></polyline>
+                </svg>
+            </button>
+            <input type="text" id="message-input" class="chat-input"
+                   placeholder="Message @{{ other_user.display_name or other_user.username }}..."
+                   autocomplete="off">
+            <button class="btn btn-primary" id="send-btn" onclick="sendDmMessage()">Send</button>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- New DM Modal -->
+<div class="modal-overlay" id="new-dm-modal">
+    <div class="modal">
+        <h3>New Direct Message</h3>
+        <form action="{{ url_for('dm.new_conversation') }}" method="POST">
+            <div class="form-group">
+                <label for="dm-user-select">Select User</label>
+                <select id="dm-user-select" name="user_id" required>
+                    <option value="">-- Choose a user --</option>
+                    {% for user in all_users %}
+                        <option value="{{ user.id }}">{{ user.display_name or user.username }} (@{{ user.username }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('new-dm-modal').classList.remove('active')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Start Conversation</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/dm.js') }}"></script>
+{% endblock %}

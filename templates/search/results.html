@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Search{% if query %}: {{ query }}{% endif %} - PwnBox{% endblock %}
+{% block page_header %}Search{% endblock %}
+
+{% block content %}
+<div class="card">
+    <form action="{{ url_for('search.index') }}" method="GET" style="margin-bottom: 20px;">
+        <div style="display: flex; gap: 8px;">
+            <input type="text" name="q" value="{{ query }}" placeholder="Search messages and users..."
+                   style="flex: 1; padding: 10px 14px; border: 1px solid var(--input-border); border-radius: 6px; font-size: 14px;" autofocus>
+            <button type="submit" class="btn btn-primary">Search</button>
+        </div>
+    </form>
+
+    {% if query %}
+        {% if messages %}
+        <div class="search-section">
+            <h3>Messages ({{ messages|length }})</h3>
+            {% for msg in messages %}
+            <div class="search-result">
+                <div style="display: flex; gap: 8px; align-items: baseline;">
+                    <strong>{{ msg.display_name or msg.username }}</strong>
+                    <span class="text-muted" style="font-size: 12px;">in #{{ msg.channel_name }}</span>
+                    <span class="text-muted" style="font-size: 12px;">{{ msg.created_at }}</span>
+                </div>
+                <div style="margin-top: 4px; color: var(--text-secondary);">{{ msg.content }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if users %}
+        <div class="search-section">
+            <h3>Users ({{ users|length }})</h3>
+            {% for user in users %}
+            <div class="search-result" style="display: flex; align-items: center; gap: 12px;">
+                <div class="user-avatar-small">{{ (user.display_name or user.username)[0]|upper }}</div>
+                <div>
+                    <a href="{{ url_for('profile.view', user_id=user.id) }}" style="font-weight: 600; color: var(--text-primary); text-decoration: none;">
+                        {{ user.display_name or user.username }}
+                    </a>
+                    <span class="text-muted">@{{ user.username }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if not messages and not users %}
+        <p class="text-muted text-center" style="padding: 40px 0;">No results found for "{{ query }}".</p>
+        {% endif %}
+    {% else %}
+        <p class="text-muted text-center" style="padding: 40px 0;">Enter a search term to find messages and users.</p>
+    {% endif %}
+</div>
+{% endblock %}

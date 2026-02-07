@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}PwnBox{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span class="logo-icon">C</span>
+                    <span class="logo-text">PwnBox</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="{{ url_for('chat.index') }}" class="nav-item {% if request.path.startswith('/chat') %}active{% endif %}" id="nav-chat">
+                    <span class="nav-icon">&#9993;</span> Chat
+                    <span class="nav-badge" id="chat-badge" style="display: none;"></span>
+                </a>
+                <a href="{{ url_for('dm.index') }}" class="nav-item {% if request.path.startswith('/dm') %}active{% endif %}" id="nav-dm">
+                    <span class="nav-icon">&#128172;</span> Messages
+                    <span class="nav-badge" id="dm-badge" style="display: none;"></span>
+                </a>
+                <a href="{{ url_for('files.index') }}" class="nav-item {% if request.path.startswith('/files') %}active{% endif %}">
+                    <span class="nav-icon">&#128196;</span> Files
+                </a>
+                <a href="{{ url_for('search.index') }}" class="nav-item {% if request.path.startswith('/search') %}active{% endif %}">
+                    <span class="nav-icon">&#128269;</span> Search
+                </a>
+            </nav>
+
+            {% block sidebar_extra %}{% endblock %}
+
+            <div class="online-users-section" id="online-users-section">
+                <div class="channel-section-header">
+                    <span>Online — <span id="online-count">0</span></span>
+                </div>
+                <ul class="online-users-list" id="online-users-list">
+                </ul>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar-small">{{ session.get('display_name', session.get('username', '?'))[0]|upper }}</div>
+                    <div class="user-details">
+                        <span class="user-name">{{ session.get('display_name', session.get('username', 'User')) }}</span>
+                        <a href="{{ url_for('profile.view', user_id=session.get('user_id', 0)) }}" class="user-link">Profile</a>
+                    </div>
+                </div>
+                <a href="{{ url_for('auth.logout') }}" class="logout-btn" title="Logout">&#x2192;</a>
+            </div>
+        </aside>
+
+        <!-- Main content area -->
+        <main class="main-content">
+            <header class="topbar">
+                <h2 class="page-title">{% block page_header %}PwnBox{% endblock %}</h2>
+                <div class="topbar-actions">
+                    <form action="{{ url_for('search.index') }}" method="GET" class="search-form">
+                        <input type="text" name="q" placeholder="Search..." class="search-input" value="{{ request.args.get('q', '') }}">
+                    </form>
+                </div>
+            </header>
+
+            <div class="content-area">
+                {% with messages = get_flashed_messages() %}
+                    {% if messages %}
+                        <div class="flash-messages">
+                            {% for msg in messages %}
+                                <div class="flash-msg">{{ msg }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    <script>
+    (function() {
+        // Mutes cache (refreshed periodically)
+        var mutedChannels = [];
+        var mutedDms = [];
+        var mutedUsers = [];
+
+        function fetchMutes() {
+            return fetch('/api/v1/mutes')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.data) {
+                        mutedChannels = data.data.channel || [];
+                        mutedDms = data.data.dm || [];
+                        mutedUsers = data.data.user || [];
+                    }
+                })
+                .catch(function() {});
+        }
+
+        function fetchOnlineUsers() {
+            fetch('/api/v1/users/online')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (!data.data) return;
+                    var list = document.getElementById('online-users-list');
+                    var count = document.getElementById('online-count');
+                    if (!list || !count) return;
+                    count.textContent = data.data.length;
+                    list.innerHTML = '';
+                    data.data.forEach(function(u) {
+                        var li = document.createElement('li');
+                        li.className = 'online-user-item';
+                        var name = u.display_name || u.username;
+                        li.innerHTML = '<span class="online-dot"></span> ' + name.replace(/</g, '&lt;');
+                        list.appendChild(li);
+                    });
+                })
+                .catch(function() {});
+        }
+
+        function getSeenChannels() {
+            try { return JSON.parse(localStorage.getItem('corpchat_last_seen')) || {}; }
+            catch(e) { return {}; }
+        }
+
+        function getSeenDms() {
+            try { return JSON.parse(localStorage.getItem('corpchat_dm_last_seen')) || {}; }
+            catch(e) { return {}; }
+        }
+
+        function fetchNavBadges() {
+            // Chat unread badge
+            fetch('/api/v1/channels/activity')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (!data.data) return;
+                    var seen = getSeenChannels();
+                    var unread = 0;
+                    for (var chId in data.data) {
+                        if (mutedChannels.indexOf(parseInt(chId)) !== -1) continue;
+                        var latest = data.data[chId] || 0;
+                        var lastRead = seen[chId] || 0;
+                        if (latest > lastRead) unread++;
+                    }
+                    var badge = document.getElementById('chat-badge');
+                    if (badge) {
+                        if (unread > 0) {
+                            badge.textContent = unread;
+                            badge.style.display = '';
+                        } else {
+                            badge.style.display = 'none';
+                        }
+                    }
+                })
+                .catch(function() {});
+
+            // DM unread badge
+            fetch('/api/v1/dm/activity')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (!data.data) return;
+                    var seen = getSeenDms();
+                    var unread = 0;
+                    for (var convId in data.data) {
+                        if (mutedDms.indexOf(parseInt(convId)) !== -1) continue;
+                        var latest = data.data[convId] || 0;
+                        var lastRead = seen[convId] || 0;
+                        if (latest > lastRead) unread++;
+                    }
+                    var badge = document.getElementById('dm-badge');
+                    if (badge) {
+                        if (unread > 0) {
+                            badge.textContent = unread;
+                            badge.style.display = '';
+                        } else {
+                            badge.style.display = 'none';
+                        }
+                    }
+                })
+                .catch(function() {});
+        }
+
+        // Expose mutes globally for chat.js / dm.js
+        window._PwnBoxMutes = {
+            channels: function() { return mutedChannels; },
+            dms: function() { return mutedDms; },
+            users: function() { return mutedUsers; }
+        };
+
+        function updateMuteButtons() {
+            document.querySelectorAll('.btn-mute').forEach(function(btn) {
+                var type = btn.dataset.muteType;
+                var id = parseInt(btn.dataset.muteId);
+                var list = type === 'channel' ? mutedChannels : type === 'dm' ? mutedDms : mutedUsers;
+                var isMuted = list.indexOf(id) !== -1;
+                btn.classList.toggle('is-muted', isMuted);
+                btn.innerHTML = isMuted ? '&#128264;' : '&#128263;';
+                btn.title = isMuted ? 'Unmute' : 'Mute';
+                // Also update the sibling channel-item
+                var sibling = btn.parentElement.querySelector('.channel-item, .dm-item');
+                if (sibling) {
+                    sibling.classList.toggle('is-muted', isMuted);
+                }
+            });
+        }
+
+        document.addEventListener('click', function(e) {
+            var btn = e.target.closest('.btn-mute');
+            if (!btn) return;
+            e.preventDefault();
+            e.stopPropagation();
+            var type = btn.dataset.muteType;
+            var id = parseInt(btn.dataset.muteId);
+            var list = type === 'channel' ? mutedChannels : type === 'dm' ? mutedDms : mutedUsers;
+            var isMuted = list.indexOf(id) !== -1;
+            var endpoint = isMuted ? '/api/v1/unmute' : '/api/v1/mute';
+            fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type: type, target_id: id })
+            })
+            .then(function() { return fetchMutes(); })
+            .then(function() { updateMuteButtons(); fetchNavBadges(); })
+            .catch(function() {});
+        });
+
+        fetchMutes().then(function() { updateMuteButtons(); fetchNavBadges(); });
+        fetchOnlineUsers();
+        setInterval(fetchOnlineUsers, 10000);
+        setInterval(fetchMutes, 30000);
+        setInterval(fetchNavBadges, 5000);
+    })();
+    </script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

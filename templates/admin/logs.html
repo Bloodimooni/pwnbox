@@ -1,0 +1,65 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Logs - Admin - PwnBox{% endblock %}
+{% block page_header %}Audit Logs{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 16px;">
+        <form action="{{ url_for('admin.logs') }}" method="GET" style="display: flex; gap: 8px; align-items: center;">
+            <label style="font-size: 13px; font-weight: 500;">Filter by event:</label>
+            <select name="event_type" style="padding: 6px 10px; border: 1px solid var(--input-border); border-radius: 4px; font-size: 13px;">
+                <option value="">All Events</option>
+                {% for et in event_types %}
+                    <option value="{{ et.event_type }}" {% if current_filter == et.event_type %}selected{% endif %}>
+                        {{ et.event_type }}
+                    </option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-sm btn-secondary">Filter</button>
+        </form>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Time</th>
+                <th>Event</th>
+                <th>User</th>
+                <th>Details</th>
+                <th>IP Address</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr>
+                <td>{{ log.id }}</td>
+                <td>{{ log.created_at }}</td>
+                <td><span class="badge badge-info">{{ log.event_type }}</span></td>
+                <td>{{ log.username or '-' }}</td>
+                <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; font-size: 12px; font-family: monospace;">
+                    {{ log.details or '-' }}
+                </td>
+                <td>{{ log.ip_address or '-' }}</td>
+            </tr>
+            {% endfor %}
+            {% if not logs %}
+            <tr>
+                <td colspan="6" class="text-center text-muted" style="padding: 20px;">No log entries found.</td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+
+    <div class="pagination">
+        {% if page > 1 %}
+            <a href="{{ url_for('admin.logs', event_type=current_filter, page=page-1) }}">Previous</a>
+        {% endif %}
+        <span class="text-muted" style="padding: 6px 12px; font-size: 13px;">Page {{ page }}</span>
+        {% if logs|length == 50 %}
+            <a href="{{ url_for('admin.logs', event_type=current_filter, page=page+1) }}">Next</a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

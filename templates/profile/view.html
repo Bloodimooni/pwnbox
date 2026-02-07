@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}{{ profile_user.display_name or profile_user.username }} - PwnBox{% endblock %}
+{% block page_header %}Profile{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="profile-header">
+        <div class="profile-avatar">{{ (profile_user.display_name or profile_user.username)[0]|upper }}</div>
+        <div class="profile-info">
+            <h2>{{ profile_user.display_name or profile_user.username }}</h2>
+            <div class="username">@{{ profile_user.username }}</div>
+            <div class="bio">{{ profile_user.bio or 'No bio set.' }}</div>
+            <div class="profile-meta">
+                <span>Joined: {{ profile_user.created_at }}</span>
+                <span>Messages: {{ message_count }}</span>
+                <span>{{ profile_user.email }}</span>
+            </div>
+        </div>
+    </div>
+
+    {% if profile_user.id == session.get('user_id') %}
+        <a href="{{ url_for('profile.edit') }}" class="btn btn-secondary">Edit Profile</a>
+    {% endif %}
+</div>
+{% endblock %}

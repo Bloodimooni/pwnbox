@@ -1,0 +1,94 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Dashboard - Admin - PwnBox{% endblock %}
+{% block page_header %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.total_users }}</div>
+        <div class="stat-label">Total Users</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.active_users }}</div>
+        <div class="stat-label">Active Users</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.total_messages }}</div>
+        <div class="stat-label">Messages</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.total_files }}</div>
+        <div class="stat-label">Files</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.total_channels }}</div>
+        <div class="stat-label">Channels</div>
+    </div>
+</div>
+
+{% if pending_resets %}
+<div class="card" style="border-color: #d97706;">
+    <h3 class="card-title" style="color: #fbbf24;">Pending Password Resets ({{ pending_resets|length }})</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>User</th>
+                <th>Requested</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for req in pending_resets %}
+            <tr>
+                <td><strong>{{ req.username }}</strong></td>
+                <td>{{ req.created_at }}</td>
+                <td>
+                    <div style="display: flex; gap: 4px;">
+                        <form action="{{ url_for('admin.approve_reset', request_id=req.id) }}" method="POST">
+                            <button type="submit" class="btn btn-sm btn-primary">Approve</button>
+                        </form>
+                        <form action="{{ url_for('admin.deny_reset', request_id=req.id) }}" method="POST"
+                              onsubmit="return confirm('Deny reset for {{ req.username }}?')">
+                            <button type="submit" class="btn btn-sm btn-danger">Deny</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<div class="card">
+    <h3 class="card-title">Recent Activity</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>Event</th>
+                <th>User</th>
+                <th>Details</th>
+                <th>IP</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in recent_logs %}
+            <tr>
+                <td>{{ log.created_at }}</td>
+                <td><span class="badge badge-info">{{ log.event_type }}</span></td>
+                <td>{{ log.username or '-' }}</td>
+                <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis;">{{ log.details or '-' }}</td>
+                <td>{{ log.ip_address or '-' }}</td>
+            </tr>
+            {% endfor %}
+            {% if not recent_logs %}
+            <tr>
+                <td colspan="5" class="text-center text-muted" style="padding: 20px;">No activity logged yet.</td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

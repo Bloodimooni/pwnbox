@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Profile - PwnBox{% endblock %}
+{% block page_header %}Edit Profile{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 600px;">
+    <form method="POST" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="display_name">Display Name</label>
+            <input type="text" id="display_name" name="display_name" value="{{ user.display_name }}">
+        </div>
+        <div class="form-group">
+            <label for="bio">Bio</label>
+            <textarea id="bio" name="bio" rows="4">{{ user.bio }}</textarea>
+        </div>
+        <div class="form-group">
+            <label for="avatar">Avatar</label>
+            <input type="file" id="avatar" name="avatar" accept="image/*">
+            <span class="text-muted" style="font-size: 12px;">PNG, JPG, or GIF. Max 10MB.</span>
+        </div>
+        <div class="form-group">
+            <label>Email</label>
+            <input type="text" value="{{ user.email }}" disabled>
+        </div>
+        <div class="form-group">
+            <label>API Token</label>
+            <input type="text" value="{{ user.api_token }}" disabled style="font-family: monospace; font-size: 12px;">
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+            <a href="{{ url_for('profile.view', user_id=session.get('user_id')) }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

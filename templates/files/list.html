@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Files - PwnBox{% endblock %}
+{% block page_header %}Shared Files{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 class="card-title" style="margin-bottom: 0;">Files</h3>
+        <button class="btn btn-primary btn-sm" onclick="document.getElementById('upload-modal').classList.add('active')">Upload File</button>
+    </div>
+
+    {% if files %}
+        {% for file in files %}
+        <div class="file-item">
+            <div class="file-info">
+                <span class="file-name">{{ file.filename }}</span>
+                <span class="file-meta">
+                    Uploaded by {{ file.display_name or file.username }}
+                    &middot; {{ file.created_at }}
+                    &middot; {{ (file.file_size / 1024)|round(1) }} KB
+                    {% if file.is_encrypted %}
+                        &middot; <span class="badge badge-info">Encrypted</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="file-actions">
+                <a href="{{ url_for('files.download', file_id=file.id) }}" class="btn btn-secondary btn-sm">Download</a>
+                {% if file.uploaded_by == session.get('user_id') %}
+                <form action="{{ url_for('files.delete', file_id=file.id) }}" method="POST" style="display: inline;"
+                      onsubmit="return confirm('Delete this file?')">
+                    <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p class="text-muted text-center" style="padding: 40px 0;">No files shared yet.</p>
+    {% endif %}
+</div>
+
+<!-- Upload Modal -->
+<div class="modal-overlay" id="upload-modal">
+    <div class="modal">
+        <h3>Upload File</h3>
+        <form action="{{ url_for('files.upload') }}" method="POST" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="file">Select File</label>
+                <input type="file" id="file" name="file" required>
+                <span class="text-muted" style="font-size: 12px;">
+                    Allowed: txt, pdf, png, jpg, jpeg, gif, zip, doc, docx. Max 10MB.
+                </span>
+            </div>
+            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('upload-modal').classList.remove('active')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Upload</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

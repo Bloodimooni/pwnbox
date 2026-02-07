@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  corpchat:
+    build: .
+    container_name: corpchat-app
+    ports:
+      - "5000:5000"
+    volumes:
+      - corpchat-data:/data
+    environment:
+      - SECRET_KEY=corpchat-ctf-secret-key-2026
+      - FLASK_CONFIG=config.ProductionConfig
+      - DATABASE_DIR=/data
+      - UPLOAD_FOLDER=/data/uploads
+      - LOG_DIR=/data/logs
+    restart: unless-stopped
+
+volumes:
+  corpchat-data:

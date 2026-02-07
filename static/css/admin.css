@@ -1,0 +1,34 @@
+/* === Admin Portal Overrides === */
+
+.admin-sidebar {
+    background: #1a1a2e;
+}
+
+.admin-sidebar .sidebar-header {
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.admin-sidebar .nav-item:hover {
+    background: #262640;
+}
+
+.admin-sidebar .nav-item.active {
+    background: #2a2a4a;
+}
+
+.admin-sidebar .sidebar-footer {
+    border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+.admin-logo-icon {
+    background: #d94a4a !important;
+}
+
+.admin-topbar {
+    border-bottom-color: #e0e0e0;
+}
+
+/* Admin stat cards accent */
+.admin-sidebar ~ .main-content .stat-value {
+    color: #d94a4a;
+}

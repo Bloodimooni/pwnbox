@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login - PwnBox</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+</head>
+<body>
+    <div class="auth-page" style="background: #1a1a2e;">
+        <div class="auth-card" style="background: #16213e; border: 1px solid #2a2a4a;">
+            <div class="auth-logo">
+                <span class="logo-icon" style="background: #d94a4a;">A</span>
+                <span class="logo-text" style="color: #e0e0e0;">Admin Portal</span>
+            </div>
+            <h2 style="color: #e0e0e0;">Admin Sign In</h2>
+
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for msg in messages %}
+                        <div class="auth-flash">{{ msg }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST">
+                <div class="form-group">
+                    <label for="username" style="color: #a0a0b0;">Username</label>
+                    <input type="text" id="username" name="username" required autofocus
+                           style="background: #1a1a2e; border-color: #2a2a4a; color: #e0e0e0;">
+                </div>
+                <div class="form-group">
+                    <label for="password" style="color: #a0a0b0;">Password</label>
+                    <input type="password" id="password" name="password" required
+                           style="background: #1a1a2e; border-color: #2a2a4a; color: #e0e0e0;">
+                </div>
+                <button type="submit" class="btn" style="background: #d94a4a; color: #fff; width: 100%; padding: 10px; font-size: 15px; margin-top: 8px;">Sign In</button>
+            </form>
+
+            <div class="auth-links" style="color: #6a6a8a;">
+                <a href="{{ url_for('auth.login') }}" style="color: #d94a4a;">Back to PwnBox</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

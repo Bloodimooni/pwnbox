@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Admin - PwnBox{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Admin Sidebar -->
+        <aside class="sidebar admin-sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span class="logo-icon admin-logo-icon">A</span>
+                    <span class="logo-text">Admin Panel</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="{{ url_for('admin.dashboard') }}" class="nav-item {% if request.path == '/admin/dashboard' %}active{% endif %}">
+                    <span class="nav-icon">&#9632;</span> Dashboard
+                    {% if g.pending_reset_count is defined and g.pending_reset_count > 0 %}
+                        <span class="badge badge-danger" style="margin-left: auto; font-size: 10px;">{{ g.pending_reset_count }}</span>
+                    {% endif %}
+                </a>
+                <a href="{{ url_for('admin.users') }}" class="nav-item {% if '/admin/users' in request.path %}active{% endif %}">
+                    <span class="nav-icon">&#9679;</span> Users
+                </a>
+                <a href="{{ url_for('admin.settings') }}" class="nav-item {% if request.path == '/admin/settings' %}active{% endif %}">
+                    <span class="nav-icon">&#9881;</span> Settings
+                </a>
+                <a href="{{ url_for('admin.logs') }}" class="nav-item {% if request.path == '/admin/logs' %}active{% endif %}">
+                    <span class="nav-icon">&#9776;</span> Logs
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar-small" style="background: #d94a4a;">A</div>
+                    <div class="user-details">
+                        <span class="user-name">{{ session.get('admin_username', 'Admin') }}</span>
+                        <a href="{{ url_for('index') }}" class="user-link">Back to PwnBox</a>
+                    </div>
+                </div>
+                <a href="{{ url_for('admin.logout') }}" class="logout-btn" title="Logout">&#x2192;</a>
+            </div>
+        </aside>
+
+        <!-- Main content area -->
+        <main class="main-content">
+            <header class="topbar admin-topbar">
+                <h2 class="page-title">{% block page_header %}Admin{% endblock %}</h2>
+                <div class="topbar-actions">
+                    <form action="{{ url_for('admin.backup') }}" method="POST" style="display: inline;">
+                        <button type="submit" class="btn btn-sm btn-secondary">Create Backup</button>
+                    </form>
+                </div>
+            </header>
+
+            <div class="content-area">
+                {% with messages = get_flashed_messages() %}
+                    {% if messages %}
+                        <div class="flash-messages">
+                            {% for msg in messages %}
+                                <div class="flash-msg">{{ msg }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

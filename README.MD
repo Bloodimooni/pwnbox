@@ -23,39 +23,11 @@ python3 app.py
 
 Admin portal lives at `/admin`.
 
-## What the App Does
+## WIKI
 
-- **Chat** with channels, real-time message polling, channel creation
-- **User profiles** with bio and avatar
-- **File sharing** with upload/download
-- **Search** across messages and users
-- **Admin dashboard** with user management, settings, logs, backups
-- **REST API** at `/api/v1` with token auth and crypto endpoints
-
-## Project Structure
-
-```
-app.py              Main app (Flask application factory)
-config.py           App configuration
-database.py         SQLite setup and seed data
-schema.sql          Database tables
-routes/
-  auth.py           Login, register, logout, password reset
-  chat.py           Channels and chat page
-  profile.py        User profiles
-  files.py          File upload/download
-  search.py         Search
-  admin.py          Admin panel
-  api.py            REST API + crypto stubs
-templates/          Jinja2 HTML templates
-static/             CSS and JS
-Dockerfile          Container build
-docker-compose.yml  One-command deployment
-```
+[Full Documentation](documentation/README.md)
 
 ## Vulnerability Areas
-
-Each team member owns one category and works in the corresponding files.
 
 | Category | Files to Modify |
 |----------|----------------|

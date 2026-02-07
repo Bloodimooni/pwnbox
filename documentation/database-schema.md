@@ -15,18 +15,18 @@ The schema is defined in `schema.sql` and consists of **12 tables**. Foreign key
 ## Entity Relationship Diagram
 
 ```
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│   users      │────<│   messages   │>────│   channels   │
-│              │     │              │     │              │
-│ id (PK)      │     │ id (PK)      │     │ id (PK)      │
-│ username     │     │ channel_id(FK)│     │ name         │
-│ email        │     │ user_id (FK) │     │ description  │
-│ password_hash│     │ content      │     │ is_private   │
-│ display_name │     │ attachment_id│──>──┐│ created_by(FK)│
-│ bio          │     │ is_encrypted │     ││ created_at   │
-│ avatar       │     │ signature    │     │└──────────────┘
-│ role         │     │ created_at   │     │
-│ api_token    │     └──────────────┘     │
+┌──────────────┐     ┌───────────────┐     ┌───────────────┐
+│   users      │────<│   messages    │>────│   channels    │
+│              │     │               │     │               │
+│ id (PK)      │     │ id (PK)       │     │ id (PK)       │
+│ username     │     │ channel_id(FK)│     │ name          │
+│ email        │     │ user_id (FK)  │     │ description   │
+│ password_hash│     │ content       │     │ is_private    │
+│ display_name │     │ attachment_id │──>─┐│ created_by(FK)│
+│ bio          │     │ is_encrypted  │    ││ created_at    │
+│ avatar       │     │ signature     │    │└───────────────┘
+│ role         │     │ created_at    │    │
+│ api_token    │     └───────────────┘    │
 │ is_active    │                          │
 │ must_change  │     ┌──────────────┐     │
 │ last_activity│     │    files     │<────┘
@@ -51,7 +51,7 @@ The schema is defined in `schema.sql` and consists of **12 tables**. Foreign key
        │     └──────────────────┘     │ attachment_id    │
        │                              │ created_at       │
        │                              └──────────────────┘
-       │
+       │     ┌───────────────────┐
        ├────<│ sessions          │    ┌──────────────────┐
        │     │ session_token     │    │  admin_users     │
        │     │ user_id (FK)      │    │                  │
@@ -59,19 +59,19 @@ The schema is defined in `schema.sql` and consists of **12 tables**. Foreign key
        │     │ user_agent        │    │ username         │
        │     │ expires_at        │    │ password_hash    │
        │     └───────────────────┘    │ privilege_level  │
-       │                              │ created_at       │
+       │     ┌───────────────────┐    │ created_at       │
        ├────<│ password_resets   │    └──────────────────┘
        │     │ token             │
        │     │ status            │    ┌──────────────────┐
        │     │ reviewed_by       │    │ system_settings  │
        │     └───────────────────┘    │                  │
-       │                              │ key (PK)         │
+       │     ┌───────────────────┐    │ key (PK)         │
        ├────<│ audit_log         │    │ value            │
        │     │ event_type        │    │ updated_at       │
        │     │ details (JSON)    │    └──────────────────┘
        │     │ ip_address        │
        │     └───────────────────┘
-       │
+       │     ┌───────────────────┐
        └────<│ mutes             │
              │ mute_type         │
              │ target_id         │

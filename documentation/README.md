@@ -1,6 +1,6 @@
 # PwnBox Documentation Wiki
 
-Welcome to the comprehensive documentation for **PwnBox** (internally codenamed **CorpChat**) -- a Capture The Flag (CTF) web application built as a corporate messaging platform. This wiki explains every aspect of the codebase in detail.
+Welcome to the comprehensive documentation for **PwnBox** -- a Capture The Flag (CTF) web application built as a corporate messaging platform. This wiki explains every aspect of the codebase in detail.
 
 ---
 

@@ -16,6 +16,11 @@
         </div>
         <div class="form-group">
             <label for="avatar">Avatar</label>
+            {% if user.avatar_filename and user.avatar_filename != 'default_avatar.png' %}
+                <div style="margin-bottom: 8px;">
+                    <img src="{{ url_for('profile.avatar', filename=user.avatar_filename) }}" alt="Current avatar" style="width: 64px; height: 64px; border-radius: 50%; object-fit: cover;">
+                </div>
+            {% endif %}
             <input type="file" id="avatar" name="avatar" accept="image/*">
             <span class="text-muted" style="font-size: 12px;">PNG, JPG, or GIF. Max 10MB.</span>
         </div>

@@ -51,7 +51,13 @@
         {% else %}
             {% for msg in messages %}
             <div class="message" data-message-id="{{ msg.id }}">
-                <div class="message-avatar">{{ (msg.display_name or msg.username)[0]|upper }}</div>
+                <div class="message-avatar">
+                    {% if msg.avatar_filename and msg.avatar_filename != 'default_avatar.png' %}
+                        <img src="{{ url_for('profile.avatar', filename=msg.avatar_filename) }}" alt="Avatar">
+                    {% else %}
+                        {{ (msg.display_name or msg.username)[0]|upper }}
+                    {% endif %}
+                </div>
                 <div class="message-body">
                     <div class="message-header">
                         <span class="message-author">{{ msg.display_name or msg.username }}</span>

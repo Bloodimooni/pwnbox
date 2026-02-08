@@ -1,6 +1,6 @@
 import os
 import uuid
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app, send_from_directory
 from database import get_db
 from routes.auth import login_required, log_event
 
@@ -52,8 +52,15 @@ def edit():
         db.commit()
 
         session['display_name'] = display_name or user['username']
+        session['avatar_filename'] = avatar_filename
         log_event('profile_update', session['user_id'])
         flash('Profile updated successfully.')
         return redirect(url_for('profile.view', user_id=session['user_id']))
 
     return render_template('profile/edit.html', user=user)
+
+
+@profile_bp.route('/avatar/<filename>')
+@login_required
+def avatar(filename):
+    return send_from_directory(current_app.config['UPLOAD_FOLDER'], filename)

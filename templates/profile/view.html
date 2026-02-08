@@ -6,7 +6,13 @@
 {% block content %}
 <div class="card">
     <div class="profile-header">
-        <div class="profile-avatar">{{ (profile_user.display_name or profile_user.username)[0]|upper }}</div>
+        <div class="profile-avatar">
+            {% if profile_user.avatar_filename and profile_user.avatar_filename != 'default_avatar.png' %}
+                <img src="{{ url_for('profile.avatar', filename=profile_user.avatar_filename) }}" alt="Avatar">
+            {% else %}
+                {{ (profile_user.display_name or profile_user.username)[0]|upper }}
+            {% endif %}
+        </div>
         <div class="profile-info">
             <h2>{{ profile_user.display_name or profile_user.username }}</h2>
             <div class="username">@{{ profile_user.username }}</div>

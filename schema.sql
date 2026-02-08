@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS files (
     mime_type TEXT,
     uploaded_by INTEGER NOT NULL REFERENCES users(id),
     channel_id INTEGER REFERENCES channels(id),
+    conversation_id INTEGER REFERENCES dm_conversations(id),
     is_encrypted INTEGER DEFAULT 0,
     encryption_key_hint TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

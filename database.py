@@ -41,6 +41,19 @@ def _migrate_db(db):
     if 'last_activity' not in user_columns:
         db.execute("ALTER TABLE users ADD COLUMN last_activity TIMESTAMP")
 
+    # Add conversation_id to files for DM attachment access control
+    files_columns = [row[1] for row in db.execute("PRAGMA table_info(files)").fetchall()]
+    if 'conversation_id' not in files_columns:
+        db.execute("ALTER TABLE files ADD COLUMN conversation_id INTEGER REFERENCES dm_conversations(id)")
+        db.execute("""
+            UPDATE files SET conversation_id = (
+                SELECT dm.conversation_id FROM dm_messages dm
+                WHERE dm.attachment_id = files.id
+                LIMIT 1
+            )
+            WHERE id IN (SELECT attachment_id FROM dm_messages WHERE attachment_id IS NOT NULL)
+        """)
+
     # Add status tracking to password_resets
     pr_columns = [row[1] for row in db.execute("PRAGMA table_info(password_resets)").fetchall()]
     if 'status' not in pr_columns:

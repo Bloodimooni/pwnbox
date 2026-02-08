@@ -6,7 +6,11 @@ _basedir = os.path.dirname(__file__)
 class BaseConfig:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'corpchat-secret-key-change-me')
     MAX_CONTENT_LENGTH = 10 * 1024 * 1024  # 10 MB
-    ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'zip', 'doc', 'docx'}
+    ALLOWED_EXTENSIONS = {
+        'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'zip', 'doc', 'docx',
+        'mp4', 'mp3', 'webm', 'ogg', 'wav', 'mov', 'avi',
+        'svg', 'webp', 'csv', 'json', 'xml', 'pptx', 'xlsx',
+    }
     CRYPTO_SIGNING_KEY = os.environ.get('CRYPTO_KEY', 'hmac-signing-key-placeholder')
     APP_VERSION = '1.0.0'
 

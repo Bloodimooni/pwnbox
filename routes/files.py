@@ -14,6 +14,21 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
 
 
+def check_file_access(file_record, user_id):
+    """Check if a user can access a file.
+    DM attachments are restricted to conversation participants.
+    Channel attachments and file manager uploads are accessible to all logged-in users.
+    """
+    if file_record['conversation_id']:
+        db = get_db()
+        conv = db.execute(
+            "SELECT id FROM dm_conversations WHERE id = ? AND (user1_id = ? OR user2_id = ?)",
+            (file_record['conversation_id'], user_id, user_id)
+        ).fetchone()
+        return conv is not None
+    return True
+
+
 @files_bp.route('/')
 @login_required
 def index():
@@ -22,6 +37,7 @@ def index():
         """SELECT f.*, u.username, u.display_name
            FROM files f
            JOIN users u ON f.uploaded_by = u.id
+           WHERE f.channel_id IS NULL AND f.conversation_id IS NULL
            ORDER BY f.created_at DESC"""
     ).fetchall()
     return render_template('files/list.html', files=files)
@@ -79,6 +95,10 @@ def download(file_id):
         flash('File not found.')
         return redirect(url_for('files.index'))
 
+    if not check_file_access(file_record, session['user_id']):
+        flash('Access denied.')
+        return redirect(url_for('files.index'))
+
     log_event('file_download', session['user_id'], {'file_id': file_id, 'filename': file_record['filename']})
     return send_from_directory(
         current_app.config['UPLOAD_FOLDER'],
@@ -96,6 +116,10 @@ def view(file_id):
 
     if not file_record:
         flash('File not found.')
+        return redirect(url_for('files.index'))
+
+    if not check_file_access(file_record, session['user_id']):
+        flash('Access denied.')
         return redirect(url_for('files.index'))
 
     return send_from_directory(

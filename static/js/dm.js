@@ -241,8 +241,15 @@
             attachmentHtml = '<div class="message-attachment"><img src="/files/view/' + msg.attachment_id + '" alt="attachment" loading="lazy"></div>';
         }
 
+        var avatarHtml;
+        if (msg.avatar_filename && msg.avatar_filename !== 'default_avatar.png') {
+            avatarHtml = '<div class="message-avatar"><img src="/profile/avatar/' + encodeURIComponent(msg.avatar_filename) + '" alt="Avatar"></div>';
+        } else {
+            avatarHtml = '<div class="message-avatar">' + escapeHtml(initial) + '</div>';
+        }
+
         div.innerHTML =
-            '<div class="message-avatar">' + escapeHtml(initial) + '</div>' +
+            avatarHtml +
             '<div class="message-body">' +
                 '<div class="message-header">' +
                     '<span class="message-author">' + escapeHtml(displayName) + '</span>' +

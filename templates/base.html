@@ -47,7 +47,13 @@
 
             <div class="sidebar-footer">
                 <div class="user-info">
-                    <div class="user-avatar-small">{{ session.get('display_name', session.get('username', '?'))[0]|upper }}</div>
+                    <div class="user-avatar-small">
+                        {% if session.get('avatar_filename') and session.get('avatar_filename') != 'default_avatar.png' %}
+                            <img src="{{ url_for('profile.avatar', filename=session.get('avatar_filename')) }}" alt="Avatar">
+                        {% else %}
+                            {{ session.get('display_name', session.get('username', '?'))[0]|upper }}
+                        {% endif %}
+                    </div>
                     <div class="user-details">
                         <span class="user-name">{{ session.get('display_name', session.get('username', 'User')) }}</span>
                         <a href="{{ url_for('profile.view', user_id=session.get('user_id', 0)) }}" class="user-link">Profile</a>

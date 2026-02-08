@@ -265,6 +265,7 @@ def list_files():
                   f.is_encrypted, u.username as uploaded_by_name
            FROM files f
            JOIN users u ON f.uploaded_by = u.id
+           WHERE f.channel_id IS NULL AND f.conversation_id IS NULL
            ORDER BY f.created_at DESC"""
     ).fetchall()
     return jsonify({"data": [dict(f) for f in files]})
@@ -542,9 +543,9 @@ def upload_dm_attachment(conversation_id):
     mime_type = mimetypes.guess_type(original_filename)[0] or 'application/octet-stream'
 
     cursor = db.execute(
-        """INSERT INTO files (filename, stored_filename, file_size, mime_type, uploaded_by)
-           VALUES (?, ?, ?, ?, ?)""",
-        (original_filename, stored_filename, file_size, mime_type, current_user_id)
+        """INSERT INTO files (filename, stored_filename, file_size, mime_type, uploaded_by, conversation_id)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        (original_filename, stored_filename, file_size, mime_type, current_user_id, conversation_id)
     )
     db.commit()
 

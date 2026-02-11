@@ -1109,3 +1109,63 @@ tr:hover td {
 .dm-item.is-muted.has-unread::after {
     display: none;
 }
+
+/* === Message Deletion === */
+.message-deleted {
+    color: var(--text-muted) !important;
+    font-style: italic;
+}
+
+.message-is-deleted .message-avatar {
+    opacity: 0.4;
+}
+
+.btn-delete-msg {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 12px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity 0.15s;
+    margin-left: 4px;
+}
+
+.message:hover .btn-delete-msg {
+    opacity: 1;
+}
+
+.btn-delete-msg:hover {
+    color: var(--danger);
+    background: rgba(237, 66, 69, 0.1);
+}
+
+/* Channel delete button in sidebar */
+.btn-delete-channel {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 11px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+}
+
+.channel-list-item:hover .btn-delete-channel {
+    opacity: 1;
+}
+
+.btn-delete-channel:hover {
+    color: var(--danger);
+    background: rgba(237, 66, 69, 0.1);
+}
+
+/* DM conversation deletion pending indicator */
+.delete-pending {
+    font-size: 11px;
+}

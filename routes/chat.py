@@ -33,10 +33,14 @@ def index():
             (active_channel['id'],)
         ).fetchall()
 
+    user = db.execute("SELECT role FROM users WHERE id = ?", (session['user_id'],)).fetchone()
+    user_role = user['role'] if user else 'user'
+
     return render_template('chat/chat.html',
                            channels=channels,
                            active_channel=active_channel,
-                           messages=messages)
+                           messages=messages,
+                           user_role=user_role)
 
 
 @chat_bp.route('/channel/<int:channel_id>')

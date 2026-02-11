@@ -25,6 +25,9 @@
                     {{ channel.name }}
                 </a>
                 <button class="btn-mute" data-mute-type="channel" data-mute-id="{{ channel.id }}" title="Mute channel">&#128263;</button>
+                {% if user_role == 'admin' %}
+                <button class="btn-delete-channel" onclick="deleteChannel({{ channel.id }}, '{{ channel.name }}')" title="Delete channel">&#128465;</button>
+                {% endif %}
             </li>
         {% endfor %}
     </ul>
@@ -35,10 +38,10 @@
 {% endblock %}
 
 {% block content %}
-<div class="chat-layout" id="chat-container" data-channel-id="{{ active_channel.id if active_channel else '' }}">
+<div class="chat-layout" id="chat-container" data-channel-id="{{ active_channel.id if active_channel else '' }}" data-user-id="{{ session.get('user_id', '') }}" data-user-role="{{ user_role }}">
     <div class="chat-messages" id="chat-messages">
         {% for msg in messages %}
-        <div class="message" data-message-id="{{ msg.id }}">
+        <div class="message{% if msg.is_deleted %} message-is-deleted{% endif %}" data-message-id="{{ msg.id }}" data-user-id="{{ msg.user_id }}">
             <div class="message-avatar">
                 {% if msg.avatar_filename and msg.avatar_filename != 'default_avatar.png' %}
                     <img src="{{ url_for('profile.avatar', filename=msg.avatar_filename) }}" alt="Avatar">
@@ -50,12 +53,19 @@
                 <div class="message-header">
                     <span class="message-author">{{ msg.display_name or msg.username }}</span>
                     <span class="message-time">{{ msg.created_at }}</span>
+                    {% if not msg.is_deleted %}
+                    <button class="btn-delete-msg" onclick="deleteMessage({{ msg.id }})" title="Delete message">&#128465;</button>
+                    {% endif %}
                 </div>
-                {% if msg.content %}<div class="message-content">{{ msg.content }}</div>{% endif %}
-                {% if msg.attachment_id %}
-                <div class="message-attachment">
-                    <img src="{{ url_for('files.view', file_id=msg.attachment_id) }}" alt="attachment" loading="lazy">
-                </div>
+                {% if msg.is_deleted %}
+                    <div class="message-content message-deleted">[message deleted]</div>
+                {% else %}
+                    {% if msg.content %}<div class="message-content">{{ msg.content }}</div>{% endif %}
+                    {% if msg.attachment_id %}
+                    <div class="message-attachment">
+                        <img src="{{ url_for('files.view', file_id=msg.attachment_id) }}" alt="attachment" loading="lazy">
+                    </div>
+                    {% endif %}
                 {% endif %}
             </div>
         </div>

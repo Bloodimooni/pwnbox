@@ -6,3 +6,5 @@ uploads/
 logs/
 *.db
 .env
+xor_encode.c
+*.out

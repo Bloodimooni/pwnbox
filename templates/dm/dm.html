@@ -63,7 +63,7 @@
                         <span class="message-author">{{ msg.display_name or msg.username }}</span>
                         <span class="message-time">{{ msg.created_at }}</span>
                     </div>
-                    {% if msg.content %}<div class="message-content">{{ msg.content }}</div>{% endif %}
+                    {% if msg.content %}<div class="message-content">{{ msg.content | safe }}</div>{% endif %}
                     {% if msg.attachment_id %}
                     <div class="message-attachment">
                         <img src="{{ url_for('files.view', file_id=msg.attachment_id) }}" alt="attachment" loading="lazy">

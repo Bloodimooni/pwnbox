@@ -7,6 +7,9 @@
     const conversationId = container.dataset.conversationId;
     if (!conversationId) return;
 
+    const currentUserId = parseInt(container.dataset.userId) || 0;
+    const userRole = container.dataset.userRole || 'user';
+
     const messagesDiv = document.getElementById('dm-messages');
     const input = document.getElementById('message-input');
     const fileInput = document.getElementById('file-input');
@@ -123,6 +126,69 @@
         if (previewName) previewName.textContent = '';
     };
 
+    // Delete a DM message
+    window.deleteDmMessage = function (messageId) {
+        if (!confirm('Delete this message?')) return;
+        fetch('/api/v1/dm/' + conversationId + '/messages/' + messageId, { method: 'DELETE' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.status === 'ok') {
+                    var msgEl = messagesDiv.querySelector('[data-message-id="' + messageId + '"]');
+                    if (msgEl) {
+                        msgEl.classList.add('message-is-deleted');
+                        var body = msgEl.querySelector('.message-body');
+                        var header = body.querySelector('.message-header');
+                        var delBtn = header.querySelector('.btn-delete-msg');
+                        if (delBtn) delBtn.remove();
+                        var content = body.querySelector('.message-content');
+                        var attachment = body.querySelector('.message-attachment');
+                        if (content) content.remove();
+                        if (attachment) attachment.remove();
+                        var deleted = document.createElement('div');
+                        deleted.className = 'message-content message-deleted';
+                        deleted.textContent = '[message deleted]';
+                        body.appendChild(deleted);
+                    }
+                } else {
+                    alert(data.error || 'Failed to delete message');
+                }
+            })
+            .catch(function () { alert('Failed to delete message'); });
+    };
+
+    // Request conversation deletion
+    window.requestDeleteConversation = function () {
+        if (!confirm('Request deletion of this entire conversation? Both users must agree for it to be deleted.')) return;
+        fetch('/api/v1/dm/' + conversationId + '/request-delete', { method: 'POST' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.status === 'ok') {
+                    if (data.deleted) {
+                        window.location.href = '/dm/';
+                    } else {
+                        window.location.reload();
+                    }
+                } else {
+                    alert(data.error || 'Failed to request deletion');
+                }
+            })
+            .catch(function () { alert('Failed to request deletion'); });
+    };
+
+    // Cancel conversation deletion request
+    window.cancelDeleteConversation = function () {
+        fetch('/api/v1/dm/' + conversationId + '/cancel-delete', { method: 'POST' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.status === 'ok') {
+                    window.location.reload();
+                } else {
+                    alert(data.error || 'Failed to cancel deletion');
+                }
+            })
+            .catch(function () { alert('Failed to cancel deletion'); });
+    };
+
     function fetchNewMessages() {
         fetch('/api/v1/dm/' + conversationId + '/messages?since=' + lastMessageId)
             .then(function (r) { return r.json(); })
@@ -225,20 +291,27 @@
 
     function appendMessage(msg) {
         var div = document.createElement('div');
-        div.className = 'message';
+        div.className = 'message' + (msg.is_deleted ? ' message-is-deleted' : '');
         div.dataset.messageId = msg.id;
+        div.dataset.userId = msg.sender_id || '';
 
         var displayName = msg.display_name || msg.username || 'Unknown';
         var initial = displayName.charAt(0).toUpperCase();
 
         var contentHtml = '';
-        if (msg.content) {
-            contentHtml = '<div class="message-content">' + escapeHtml(msg.content) + '</div>';
-        }
-
         var attachmentHtml = '';
-        if (msg.attachment_id) {
-            attachmentHtml = '<div class="message-attachment"><img src="/files/view/' + msg.attachment_id + '" alt="attachment" loading="lazy"></div>';
+        var deleteBtnHtml = '';
+
+        if (msg.is_deleted) {
+            contentHtml = '<div class="message-content message-deleted">[message deleted]</div>';
+        } else {
+            if (msg.content) {
+                contentHtml = '<div class="message-content">' + escapeHtml(msg.content) + '</div>';
+            }
+            if (msg.attachment_id) {
+                attachmentHtml = '<div class="message-attachment"><img src="/files/view/' + msg.attachment_id + '" alt="attachment" loading="lazy"></div>';
+            }
+            deleteBtnHtml = '<button class="btn-delete-msg" onclick="deleteDmMessage(' + msg.id + ')" title="Delete message">&#128465;</button>';
         }
 
         var avatarHtml;
@@ -254,6 +327,7 @@
                 '<div class="message-header">' +
                     '<span class="message-author">' + escapeHtml(displayName) + '</span>' +
                     '<span class="message-time">' + escapeHtml(msg.created_at || '') + '</span>' +
+                    deleteBtnHtml +
                 '</div>' +
                 contentHtml +
                 attachmentHtml +

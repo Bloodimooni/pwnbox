@@ -5,6 +5,17 @@
 {% block page_header %}
     {% if other_user %}
         <span style="color: var(--text-muted);">@</span> {{ other_user.display_name or other_user.username }}
+        <span id="dm-delete-actions" style="margin-left: auto; display: flex; gap: 8px; align-items: center;">
+            {% if my_delete_requested %}
+                <span class="badge badge-danger delete-pending">Deletion requested</span>
+                <button class="btn btn-sm btn-secondary" onclick="cancelDeleteConversation()">Cancel</button>
+            {% elif other_delete_requested %}
+                <span class="badge badge-info delete-pending">Other user requested deletion</span>
+                <button class="btn btn-sm btn-danger" onclick="requestDeleteConversation()">Confirm Delete</button>
+            {% else %}
+                <button class="btn btn-sm btn-danger" onclick="requestDeleteConversation()">Delete Conversation</button>
+            {% endif %}
+        </span>
     {% else %}
         Direct Messages
     {% endif %}
@@ -34,7 +45,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="chat-layout" id="dm-container" data-conversation-id="{{ active_conv.id if active_conv else '' }}">
+<div class="chat-layout" id="dm-container" data-conversation-id="{{ active_conv.id if active_conv else '' }}" data-user-id="{{ session.get('user_id', '') }}" data-user-role="{{ user_role }}"{% if active_conv %} data-delete-requested="{{ my_delete_requested }}"{% endif %}>
     <div class="chat-messages" id="dm-messages">
         {% if not active_conv and not conversations %}
         <div style="text-align: center; padding: 60px 20px; color: var(--text-muted);">
@@ -50,7 +61,7 @@
         </div>
         {% else %}
             {% for msg in messages %}
-            <div class="message" data-message-id="{{ msg.id }}">
+            <div class="message{% if msg.is_deleted %} message-is-deleted{% endif %}" data-message-id="{{ msg.id }}" data-user-id="{{ msg.sender_id }}">
                 <div class="message-avatar">
                     {% if msg.avatar_filename and msg.avatar_filename != 'default_avatar.png' %}
                         <img src="{{ url_for('profile.avatar', filename=msg.avatar_filename) }}" alt="Avatar">
@@ -62,12 +73,19 @@
                     <div class="message-header">
                         <span class="message-author">{{ msg.display_name or msg.username }}</span>
                         <span class="message-time">{{ msg.created_at }}</span>
+                        {% if not msg.is_deleted %}
+                        <button class="btn-delete-msg" onclick="deleteDmMessage({{ msg.id }})" title="Delete message">&#128465;</button>
+                        {% endif %}
                     </div>
-                    {% if msg.content %}<div class="message-content">{{ msg.content | safe }}</div>{% endif %}
-                    {% if msg.attachment_id %}
-                    <div class="message-attachment">
-                        <img src="{{ url_for('files.view', file_id=msg.attachment_id) }}" alt="attachment" loading="lazy">
-                    </div>
+                    {% if msg.is_deleted %}
+                        <div class="message-content message-deleted">[message deleted]</div>
+                    {% else %}
+                        {% if msg.content %}<div class="message-content">{{ msg.content }}</div>{% endif %}
+                        {% if msg.attachment_id %}
+                        <div class="message-attachment">
+                            <img src="{{ url_for('files.view', file_id=msg.attachment_id) }}" alt="attachment" loading="lazy">
+                        </div>
+                        {% endif %}
                     {% endif %}
                 </div>
             </div>

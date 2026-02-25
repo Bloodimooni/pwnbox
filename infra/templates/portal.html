@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PwnBox CTF - Instance Portal</title>
+    <title>PwnBox CTF</title>
     <style>
         :root {
             --bg: #0d1117;
@@ -13,6 +13,7 @@
             --accent-hover: #79c0ff;
             --danger: #f85149;
             --success: #3fb950;
+            --warning: #d29922;
             --text: #e6edf3;
             --text-muted: #8b949e;
         }
@@ -22,19 +23,40 @@
             background: var(--bg);
             color: var(--text);
             min-height: 100vh;
-            padding: 40px 20px;
         }
-        .container { max-width: 800px; margin: 0 auto; }
-        .header {
-            text-align: center;
-            margin-bottom: 40px;
+        /* Nav */
+        .navbar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            background: var(--card);
+            border-bottom: 1px solid var(--border);
         }
-        .header h1 {
-            font-size: 32px;
-            margin-bottom: 8px;
+        .navbar .brand {
+            font-weight: 700;
+            font-size: 18px;
+            margin-right: 20px;
         }
-        .header h1 span { color: var(--accent); }
-        .header p { color: var(--text-muted); }
+        .navbar .brand span { color: var(--accent); }
+        .nav-link {
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            color: var(--text-muted);
+            border: none;
+            background: none;
+        }
+        .nav-link:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+        .nav-link.active { color: var(--accent); background: rgba(88,166,255,0.1); }
+        .nav-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+        .nav-user { font-size: 13px; color: var(--text-muted); }
+        /* Container */
+        .container { max-width: 800px; margin: 0 auto; padding: 30px 20px; }
+        .view { display: none; }
+        .view.active { display: block; }
+        /* Card */
         .card {
             background: var(--card);
             border: 1px solid var(--border);
@@ -42,19 +64,18 @@
             padding: 24px;
             margin-bottom: 20px;
         }
-        .card h2 {
-            font-size: 18px;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+        .card h2 { font-size: 18px; margin-bottom: 16px; }
+        .card h3 { font-size: 15px; margin-bottom: 10px; color: var(--text-muted); }
+        /* Forms */
+        .form-group { margin-bottom: 14px; }
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
         }
-        .form-row {
-            display: flex;
-            gap: 12px;
-        }
-        input[type="text"] {
-            flex: 1;
+        input[type="text"], input[type="password"] {
+            width: 100%;
             padding: 10px 14px;
             background: var(--bg);
             border: 1px solid var(--border);
@@ -62,10 +83,10 @@
             color: var(--text);
             font-size: 14px;
         }
-        input[type="text"]:focus {
-            outline: none;
-            border-color: var(--accent);
-        }
+        input:focus { outline: none; border-color: var(--accent); }
+        .form-row { display: flex; gap: 12px; }
+        .form-row .form-group { flex: 1; }
+        /* Buttons */
         .btn {
             padding: 10px 20px;
             border: none;
@@ -73,29 +94,46 @@
             font-size: 14px;
             font-weight: 500;
             cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
         .btn-primary { background: var(--accent); color: #000; }
         .btn-primary:hover { background: var(--accent-hover); }
         .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
         .btn-danger { background: var(--danger); color: #fff; }
         .btn-danger:hover { background: #da3633; }
-        .btn-sm { padding: 6px 12px; font-size: 12px; }
+        .btn-success { background: var(--success); color: #000; }
+        .btn-success:hover { background: #2ea043; }
+        .btn-warning { background: var(--warning); color: #000; }
         .btn-outline {
             background: transparent;
             border: 1px solid var(--border);
             color: var(--text);
         }
         .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
-
-        /* Instance result card */
-        #result { display: none; }
-        .result-info {
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+        .btn-block { width: 100%; justify-content: center; }
+        .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+        /* Alert */
+        .alert {
+            padding: 10px 16px;
+            border-radius: 6px;
+            margin-bottom: 14px;
+            font-size: 14px;
+            display: none;
+        }
+        .alert-error { background: #3b1d1d; color: var(--danger); }
+        .alert-success { background: #0d2818; color: var(--success); }
+        .alert.show { display: block; }
+        /* Info grid */
+        .info-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 12px;
             margin-bottom: 16px;
         }
-        .result-item label {
+        .info-item label {
             display: block;
             font-size: 11px;
             text-transform: uppercase;
@@ -103,12 +141,12 @@
             color: var(--text-muted);
             margin-bottom: 4px;
         }
-        .result-item .value {
+        .info-item .value {
             font-family: "SF Mono", Consolas, monospace;
             font-size: 14px;
             color: var(--accent);
         }
-        .config-box {
+        .code-box {
             background: var(--bg);
             border: 1px solid var(--border);
             border-radius: 6px;
@@ -118,29 +156,9 @@
             white-space: pre-wrap;
             word-break: break-all;
             margin-bottom: 12px;
-            max-height: 300px;
-            overflow-y: auto;
         }
-        .actions {
-            display: flex;
-            gap: 8px;
-            margin-top: 12px;
-        }
-
-        /* Instance table */
-        .stats {
-            display: flex;
-            gap: 20px;
-            margin-bottom: 16px;
-            font-size: 14px;
-            color: var(--text-muted);
-        }
-        .stats .num { color: var(--accent); font-weight: 600; }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
-        }
+        /* Table */
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
         th {
             text-align: left;
             padding: 8px 12px;
@@ -149,11 +167,8 @@
             font-size: 12px;
             text-transform: uppercase;
         }
-        td {
-            padding: 8px 12px;
-            border-bottom: 1px solid var(--border);
-        }
-        tr:hover td { background: rgba(88, 166, 255, 0.05); }
+        td { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+        tr:hover td { background: rgba(88,166,255,0.05); }
         .badge {
             display: inline-block;
             padding: 2px 8px;
@@ -161,20 +176,101 @@
             font-size: 11px;
             font-weight: 600;
         }
+        .badge-gold { background: #3d2e00; color: var(--warning); }
+        .badge-silver { background: #1c2128; color: #8b949e; }
+        .badge-bronze { background: #2d1a00; color: #c47f17; }
         .badge-active { background: #0d2818; color: var(--success); }
+        .badge-paused { background: #3d2e00; color: var(--warning); }
         .badge-expired { background: #3b1d1d; color: var(--danger); }
-        .empty-state {
+        .empty-state { text-align: center; padding: 32px; color: var(--text-muted); }
+        /* Tabs for auth */
+        .auth-tabs { display: flex; gap: 0; margin-bottom: 20px; }
+        .auth-tab {
+            flex: 1;
+            padding: 10px;
             text-align: center;
-            padding: 32px;
+            cursor: pointer;
+            border-bottom: 2px solid var(--border);
             color: var(--text-muted);
+            font-size: 14px;
+            background: none;
+            border-top: none;
+            border-left: none;
+            border-right: none;
         }
-        .error-msg {
-            background: #3b1d1d;
-            color: var(--danger);
-            padding: 10px 16px;
-            border-radius: 6px;
-            margin-top: 12px;
+        .auth-tab.active { border-bottom-color: var(--accent); color: var(--accent); }
+        .auth-form { display: none; }
+        .auth-form.active { display: block; }
+        /* Members list */
+        .member-list { list-style: none; }
+        .member-list li {
+            padding: 6px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+        }
+        .member-list li:last-child { border-bottom: none; }
+        .captain-badge {
+            font-size: 11px;
+            background: rgba(88,166,255,0.15);
+            color: var(--accent);
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 6px;
+        }
+        /* Submission list */
+        .sub-list { list-style: none; }
+        .sub-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .sub-list li:last-child { border-bottom: none; }
+        .sub-flag { font-family: "SF Mono", Consolas, monospace; color: var(--success); }
+        .sub-meta { color: var(--text-muted); font-size: 12px; }
+        .score-big {
+            font-size: 48px;
+            font-weight: 700;
+            color: var(--accent);
+            text-align: center;
+            margin: 10px 0;
+        }
+        .score-label { text-align: center; color: var(--text-muted); font-size: 14px; }
+        /* Launch progress */
+        .launch-progress {
             display: none;
+            text-align: center;
+            padding: 20px 0;
+        }
+        .launch-progress.show { display: block; }
+        .spinner {
+            width: 36px; height: 36px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .progress-bar-wrap {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            height: 8px;
+            overflow: hidden;
+            margin: 16px 0 8px;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--accent);
+            border-radius: 6px;
+            transition: width 0.5s linear;
+        }
+        .progress-text {
+            font-size: 13px;
+            color: var(--text-muted);
         }
         .footer {
             text-align: center;
@@ -185,180 +281,641 @@
     </style>
 </head>
 <body>
+
+<!-- Navbar -->
+<nav class="navbar" id="navbar">
+    <div class="brand"><span>PwnBox</span> CTF</div>
+    <div id="nav-links"></div>
+    <div class="nav-right" id="nav-right"></div>
+</nav>
+
 <div class="container">
-    <div class="header">
-        <h1><span>PwnBox</span> CTF</h1>
-        <p>Request your isolated instance to start hacking. Instances auto-destroy after {{ ttl_hours }} hours.</p>
-    </div>
 
-    <!-- Launch Instance -->
-    <div class="card">
-        <h2>Launch Instance</h2>
-        <div class="form-row">
-            <input type="text" id="team-name" placeholder="Enter your team name (letters, numbers, hyphens)"
-                   maxlength="32" autocomplete="off">
-            <button class="btn btn-primary" id="btn-create" onclick="createInstance()">Launch</button>
-        </div>
-        <div class="error-msg" id="create-error"></div>
-    </div>
+    <!-- Auth View -->
+    <div class="view" id="view-auth">
+        <div class="card" style="max-width: 420px; margin: 40px auto;">
+            <div class="auth-tabs">
+                <button class="auth-tab active" onclick="showAuthTab('login')">Login</button>
+                <button class="auth-tab" onclick="showAuthTab('register')">Register</button>
+            </div>
 
-    <!-- Result (shown after creation) -->
-    <div class="card" id="result">
-        <h2>Your Instance</h2>
-        <div class="result-info">
-            <div class="result-item">
-                <label>Team</label>
-                <div class="value" id="r-team"></div>
+            <!-- Login -->
+            <div class="auth-form active" id="form-login">
+                <div class="alert alert-error" id="login-error"></div>
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="login-user" autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="login-pass" autocomplete="current-password">
+                </div>
+                <button class="btn btn-primary btn-block" onclick="doLogin()">Login</button>
             </div>
-            <div class="result-item">
-                <label>App URL</label>
-                <div class="value" id="r-url"></div>
+
+            <!-- Register -->
+            <div class="auth-form" id="form-register">
+                <div class="alert alert-error" id="register-error"></div>
+                <div class="form-group">
+                    <label>Event Password</label>
+                    <input type="password" id="reg-event" placeholder="Required to register">
+                </div>
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="reg-user" autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="reg-pass" autocomplete="new-password">
+                </div>
+                <button class="btn btn-primary btn-block" onclick="doRegister()">Register</button>
             </div>
-            <div class="result-item">
-                <label>Container IP</label>
-                <div class="value" id="r-ip"></div>
-            </div>
-            <div class="result-item">
-                <label>Expires</label>
-                <div class="value" id="r-expires"></div>
-            </div>
-        </div>
-        <h3 style="font-size: 14px; margin-bottom: 8px; color: var(--text-muted);">WireGuard Config</h3>
-        <div class="config-box" id="r-config"></div>
-        <div class="actions">
-            <button class="btn btn-outline btn-sm" onclick="downloadConfig()">Download .conf</button>
-            <button class="btn btn-outline btn-sm" onclick="copyConfig()">Copy to Clipboard</button>
-            <button class="btn btn-danger btn-sm" style="margin-left: auto;" onclick="destroyInstance()">Destroy Instance</button>
         </div>
     </div>
 
-    <!-- Active Instances -->
-    <div class="card">
-        <h2>Active Instances</h2>
-        <div class="stats">
-            <span><span class="num" id="count">{{ current_count }}</span> / {{ max_instances }} instances</span>
+    <!-- Dashboard View -->
+    <div class="view" id="view-dashboard">
+        <!-- No team -->
+        <div id="no-team">
+            <div class="card">
+                <h2>Join or Create a Team</h2>
+                <p style="color: var(--text-muted); margin-bottom: 16px;">You need a team to participate in the CTF.</p>
+                <div class="alert alert-error" id="team-error"></div>
+                <div class="alert alert-success" id="team-success"></div>
+                <div class="form-row" style="margin-bottom: 12px;">
+                    <div class="form-group">
+                        <label>Create New Team</label>
+                        <input type="text" id="new-team-name" placeholder="Team name">
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="createTeam()" style="margin-bottom: 20px;">Create Team</button>
+                <hr style="border-color: var(--border); margin-bottom: 16px;">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Join Existing Team</label>
+                        <input type="text" id="join-code" placeholder="Enter join code">
+                    </div>
+                </div>
+                <button class="btn btn-outline" onclick="joinTeam()">Join Team</button>
+            </div>
         </div>
-        <div id="instance-table"></div>
+
+        <!-- Has team -->
+        <div id="has-team" style="display: none;">
+            <!-- Team Info -->
+            <div class="card">
+                <h2>Team: <span id="team-name-display"></span></h2>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <label>Score</label>
+                        <div class="value" id="team-score">0</div>
+                    </div>
+                    <div class="info-item">
+                        <label>Flags Found</label>
+                        <div class="value" id="team-flags">0</div>
+                    </div>
+                </div>
+                <h3>Members</h3>
+                <ul class="member-list" id="member-list"></ul>
+                <div id="join-code-display" style="margin-top: 14px;"></div>
+            </div>
+
+            <!-- Instance Info -->
+            <div class="card" id="instance-card">
+                <h2>Instance</h2>
+                <div id="instance-none">
+                    <p class="empty-state">No instance running.</p>
+                    <div id="launch-btn-wrap" style="text-align: center; margin-top: 12px;"></div>
+                </div>
+                <div class="launch-progress" id="instance-launching">
+                    <div class="spinner"></div>
+                    <div style="font-size: 15px; margin-bottom: 4px;">Spinning up your instance...</div>
+                    <div class="progress-text" id="launch-status">Starting container and registering with NetBird</div>
+                    <div class="progress-bar-wrap"><div class="progress-bar-fill" id="launch-bar"></div></div>
+                    <div class="progress-text" id="launch-timer"></div>
+                </div>
+                <div id="instance-info" style="display: none;">
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <label>NetBird IP</label>
+                            <div class="value" id="inst-ip"></div>
+                        </div>
+                        <div class="info-item">
+                            <label>Status</label>
+                            <div id="inst-status"></div>
+                        </div>
+                        <div class="info-item">
+                            <label>App URL</label>
+                            <div class="value" id="inst-url"></div>
+                        </div>
+                        <div class="info-item">
+                            <label>Time Left</label>
+                            <div class="value" id="inst-remaining"></div>
+                        </div>
+                    </div>
+                    <h3>NetBird Connection</h3>
+                    <div class="code-box" id="inst-instructions"></div>
+                    <div class="actions" id="instance-actions"></div>
+                </div>
+                <div class="alert alert-error" id="instance-error" style="margin-top: 12px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Flags View -->
+    <div class="view" id="view-flags">
+        <div class="card">
+            <h2>Submit Flag</h2>
+            <div class="alert alert-error" id="flag-error"></div>
+            <div class="alert alert-success" id="flag-success"></div>
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <input type="text" id="flag-input" placeholder="FLAG{...}" autocomplete="off">
+                </div>
+                <button class="btn btn-success" onclick="submitFlag()" style="align-self: flex-end;">Submit</button>
+            </div>
+        </div>
+        <div class="card">
+            <h2>Your Team's Score</h2>
+            <div class="score-big" id="flag-score">0</div>
+            <div class="score-label"><span id="flag-count">0</span> / <span id="flag-total">0</span> flags captured</div>
+        </div>
+        <div class="card">
+            <h2>Submission History</h2>
+            <ul class="sub-list" id="sub-list"></ul>
+            <div class="empty-state" id="sub-empty">No flags submitted yet.</div>
+        </div>
+    </div>
+
+    <!-- Leaderboard View -->
+    <div class="view" id="view-leaderboard">
+        <div class="card">
+            <h2>Leaderboard</h2>
+            <div id="leaderboard-table"></div>
+        </div>
     </div>
 
     <div class="footer">
-        PwnBox CTF Platform &mdash; Connect via WireGuard VPN to access your instance
+        PwnBox CTF Platform &mdash; Instances auto-destroy after {{ ttl_hours }} hours
     </div>
 </div>
 
 <script>
+// --- State ---
+let currentUser = null;
 let currentTeam = null;
+let isCaptain = false;
 
-function createInstance() {
-    const name = document.getElementById('team-name').value.trim();
-    if (!name) return;
-
-    const btn = document.getElementById('btn-create');
-    const err = document.getElementById('create-error');
-    btn.disabled = true;
-    btn.textContent = 'Launching...';
-    err.style.display = 'none';
-
-    fetch('/api/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ team: name })
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.error) {
-            err.textContent = data.error;
-            err.style.display = 'block';
-        } else {
-            currentTeam = data.team;
-            document.getElementById('r-team').textContent = data.team;
-            document.getElementById('r-url').textContent = 'http://' + data.container_ip + ':' + data.app_port;
-            document.getElementById('r-ip').textContent = data.container_ip;
-            document.getElementById('r-expires').textContent = new Date(data.expires_at).toLocaleString();
-            document.getElementById('r-config').textContent = data.wg_config;
-            document.getElementById('result').style.display = 'block';
-            refreshInstances();
-        }
-    })
-    .catch(e => {
-        err.textContent = 'Network error: ' + e.message;
-        err.style.display = 'block';
-    })
-    .finally(() => {
-        btn.disabled = false;
-        btn.textContent = 'Launch';
-    });
+// --- API helper ---
+async function api(url, opts = {}) {
+    if (opts.body && typeof opts.body === 'object') {
+        opts.headers = {'Content-Type': 'application/json', ...(opts.headers||{})};
+        opts.body = JSON.stringify(opts.body);
+    }
+    const r = await fetch(url, opts);
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Request failed');
+    return data;
 }
 
-function destroyInstance() {
-    if (!currentTeam) return;
-    if (!confirm('Destroy instance for ' + currentTeam + '? This cannot be undone.')) return;
+// --- Nav ---
+function renderNav() {
+    const links = document.getElementById('nav-links');
+    const right = document.getElementById('nav-right');
 
-    fetch('/api/destroy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ team: currentTeam })
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.status === 'ok') {
-            document.getElementById('result').style.display = 'none';
-            currentTeam = null;
-            refreshInstances();
-        } else {
-            alert(data.error || 'Failed to destroy');
-        }
-    });
+    if (!currentUser) {
+        links.innerHTML = `
+            <button class="nav-link" onclick="showView('leaderboard')">Leaderboard</button>`;
+        right.innerHTML = '';
+        return;
+    }
+
+    links.innerHTML = `
+        <button class="nav-link" data-view="dashboard" onclick="showView('dashboard')">Dashboard</button>
+        <button class="nav-link" data-view="flags" onclick="showView('flags')">Flags</button>
+        <button class="nav-link" data-view="leaderboard" onclick="showView('leaderboard')">Leaderboard</button>`;
+    right.innerHTML = `
+        <span class="nav-user">${currentUser}</span>
+        <button class="btn btn-outline btn-sm" onclick="doLogout()">Logout</button>`;
 }
 
-function downloadConfig() {
-    if (currentTeam) {
-        window.location.href = '/api/config/' + currentTeam;
+function showView(name) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    const view = document.getElementById('view-' + name);
+    if (view) view.classList.add('active');
+    const link = document.querySelector(`.nav-link[data-view="${name}"]`);
+    if (link) link.classList.add('active');
+
+    if (name === 'dashboard') refreshDashboard();
+    if (name === 'flags') refreshFlags();
+    if (name === 'leaderboard') refreshLeaderboard();
+}
+
+// --- Auth ---
+function showAuthTab(tab) {
+    document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+    document.querySelector(`.auth-tab:nth-child(${tab === 'login' ? 1 : 2})`).classList.add('active');
+    document.getElementById('form-' + tab).classList.add('active');
+}
+
+async function doLogin() {
+    const errEl = document.getElementById('login-error');
+    errEl.classList.remove('show');
+    try {
+        const data = await api('/api/login', {
+            method: 'POST',
+            body: {
+                username: document.getElementById('login-user').value,
+                password: document.getElementById('login-pass').value,
+            }
+        });
+        await initSession();
+    } catch (e) {
+        errEl.textContent = e.message;
+        errEl.classList.add('show');
     }
 }
 
-function copyConfig() {
-    const config = document.getElementById('r-config').textContent;
-    navigator.clipboard.writeText(config).then(() => {
-        const btn = event.target;
-        btn.textContent = 'Copied!';
-        setTimeout(() => btn.textContent = 'Copy to Clipboard', 2000);
-    });
-}
-
-function refreshInstances() {
-    fetch('/api/status')
-        .then(r => r.json())
-        .then(data => {
-            document.getElementById('count').textContent = data.total;
-            const container = document.getElementById('instance-table');
-
-            if (data.total === 0) {
-                container.innerHTML = '<div class="empty-state">No active instances</div>';
-                return;
+async function doRegister() {
+    const errEl = document.getElementById('register-error');
+    errEl.classList.remove('show');
+    try {
+        const data = await api('/api/register', {
+            method: 'POST',
+            body: {
+                username: document.getElementById('reg-user').value,
+                password: document.getElementById('reg-pass').value,
+                event_password: document.getElementById('reg-event').value,
             }
-
-            let html = '<table><thead><tr><th>Team</th><th>IP</th><th>Status</th><th>Time Left</th></tr></thead><tbody>';
-            for (const [team, info] of Object.entries(data.instances)) {
-                const badge = info.expired
-                    ? '<span class="badge badge-expired">expired</span>'
-                    : '<span class="badge badge-active">active</span>';
-                const remaining = info.expired ? '-' : Math.floor(info.remaining_minutes / 60) + 'h ' + (info.remaining_minutes % 60) + 'm';
-                html += '<tr><td>' + team + '</td><td>' + info.container_ip + '</td><td>' + badge + '</td><td>' + remaining + '</td></tr>';
-            }
-            html += '</tbody></table>';
-            container.innerHTML = html;
         });
+        await initSession();
+    } catch (e) {
+        errEl.textContent = e.message;
+        errEl.classList.add('show');
+    }
 }
 
-// Refresh on load and every 30s
-refreshInstances();
-setInterval(refreshInstances, 30000);
+async function doLogout() {
+    await api('/api/logout', {method: 'POST'});
+    currentUser = null;
+    currentTeam = null;
+    isCaptain = false;
+    renderNav();
+    showView('auth');
+}
 
-// Enter key to create
-document.getElementById('team-name').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') createInstance();
+// --- Session init ---
+async function initSession() {
+    try {
+        const data = await api('/api/me');
+        currentUser = data.username;
+        currentTeam = data.team;
+        isCaptain = data.is_captain;
+        renderNav();
+        showView('dashboard');
+    } catch (e) {
+        currentUser = null;
+        renderNav();
+        showView('auth');
+    }
+}
+
+// --- Dashboard ---
+async function refreshDashboard() {
+    if (!currentUser) return;
+
+    try {
+        const me = await api('/api/me');
+        currentTeam = me.team;
+        isCaptain = me.is_captain;
+    } catch(e) { return; }
+
+    if (!currentTeam) {
+        document.getElementById('no-team').style.display = 'block';
+        document.getElementById('has-team').style.display = 'none';
+        return;
+    }
+
+    document.getElementById('no-team').style.display = 'none';
+    document.getElementById('has-team').style.display = 'block';
+
+    try {
+        const team = await api('/api/team');
+        document.getElementById('team-name-display').textContent = team.team_name;
+        document.getElementById('team-score').textContent = team.score;
+        document.getElementById('team-flags').textContent = team.flags_found;
+
+        // Members
+        const ml = document.getElementById('member-list');
+        ml.innerHTML = team.members.map(m =>
+            `<li>${esc(m)}${m === team.captain ? '<span class="captain-badge">captain</span>' : ''}</li>`
+        ).join('');
+
+        // Join code (captain only)
+        const jcd = document.getElementById('join-code-display');
+        if (team.join_code) {
+            jcd.innerHTML = `<div style="font-size:13px;color:var(--text-muted);">
+                Join Code: <span style="font-family:monospace;color:var(--accent);user-select:all;">${esc(team.join_code)}</span>
+                <button class="btn btn-outline btn-sm" style="margin-left:8px;" onclick="navigator.clipboard.writeText('${esc(team.join_code)}')">Copy</button>
+            </div>`;
+        } else {
+            jcd.innerHTML = '';
+        }
+
+        // Instance
+        renderInstance(team.instance, team.is_captain);
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+function renderInstance(inst, captain) {
+    const none = document.getElementById('instance-none');
+    const info = document.getElementById('instance-info');
+    const progress = document.getElementById('instance-launching');
+    const launchWrap = document.getElementById('launch-btn-wrap');
+
+    // If the launch timer is still running, don't touch the UI
+    if (launchTimer) return;
+
+    progress.classList.remove('show');
+
+    if (!inst) {
+        none.style.display = 'block';
+        info.style.display = 'none';
+        launchWrap.innerHTML = captain
+            ? '<button class="btn btn-primary" onclick="launchInstance()">Launch Instance</button>'
+            : '';
+        return;
+    }
+
+    none.style.display = 'none';
+    info.style.display = 'block';
+
+    const ip = inst.netbird_ip || inst.container_ip || 'pending';
+    const appUrl = ip !== 'pending' ? `http://${ip}:${inst.app_port}` : 'pending';
+
+    document.getElementById('inst-ip').textContent = ip;
+    document.getElementById('inst-url').textContent = appUrl;
+
+    let statusBadge;
+    if (inst.paused) {
+        statusBadge = '<span class="badge badge-paused">paused</span>';
+    } else if (inst.expired) {
+        statusBadge = '<span class="badge badge-expired">expired</span>';
+    } else {
+        statusBadge = '<span class="badge badge-active">running</span>';
+    }
+    document.getElementById('inst-status').innerHTML = statusBadge;
+
+    const h = Math.floor(inst.remaining_minutes / 60);
+    const m = inst.remaining_minutes % 60;
+    document.getElementById('inst-remaining').textContent = inst.expired ? 'Expired' : `${h}h ${m}m`;
+
+    const setupCmd = `netbird up --setup-key ${inst.netbird_setup_key} --management-url ${inst.netbird_management_url}`;
+    document.getElementById('inst-instructions').textContent =
+        `1. Install NetBird: https://docs.netbird.io/how-to/installation\n\n` +
+        `2. Connect to the network:\n   ${setupCmd}\n\n` +
+        `3. Access your instance:\n   ${appUrl}`;
+
+    // Captain actions
+    const actions = document.getElementById('instance-actions');
+    if (captain) {
+        let btns = `<button class="btn btn-outline btn-sm" onclick="navigator.clipboard.writeText('${esc(setupCmd)}')">Copy Setup Command</button>`;
+        if (inst.paused) {
+            btns += `<button class="btn btn-success btn-sm" onclick="instanceAction('resume')">Resume</button>`;
+        } else if (!inst.expired) {
+            btns += `<button class="btn btn-warning btn-sm" onclick="instanceAction('pause')">Pause</button>`;
+        }
+        btns += `<button class="btn btn-danger btn-sm" style="margin-left:auto;" onclick="instanceAction('destroy')">Destroy</button>`;
+        actions.innerHTML = btns;
+    } else {
+        actions.innerHTML = '';
+    }
+}
+
+let launchTimer = null;
+
+async function launchInstance() {
+    const errEl = document.getElementById('instance-error');
+    errEl.classList.remove('show');
+
+    // Hide the launch button and no-instance state, show progress
+    document.getElementById('instance-none').style.display = 'none';
+    const progress = document.getElementById('instance-launching');
+    const bar = document.getElementById('launch-bar');
+    const timerEl = document.getElementById('launch-timer');
+    const statusEl = document.getElementById('launch-status');
+    progress.classList.add('show');
+    bar.style.width = '0%';
+
+    const WAIT_SECONDS = 30;
+    let elapsed = 0;
+
+    // Start the progress animation
+    statusEl.textContent = 'Sending launch request...';
+    timerEl.textContent = '';
+
+    try {
+        await api('/api/instance/launch', {method: 'POST'});
+    } catch (e) {
+        progress.classList.remove('show');
+        document.getElementById('instance-none').style.display = 'block';
+        errEl.textContent = e.message;
+        errEl.classList.add('show');
+        return;
+    }
+
+    // Launch succeeded, start countdown
+    statusEl.textContent = 'Container started. Waiting for NetBird registration...';
+    timerEl.textContent = `${WAIT_SECONDS}s remaining`;
+    bar.style.width = '5%';
+
+    launchTimer = setInterval(() => {
+        elapsed++;
+        const pct = Math.min(5 + (elapsed / WAIT_SECONDS) * 95, 100);
+        bar.style.width = pct + '%';
+        const remaining = Math.max(WAIT_SECONDS - elapsed, 0);
+        timerEl.textContent = `${remaining}s remaining`;
+
+        if (elapsed >= WAIT_SECONDS * 0.3) {
+            statusEl.textContent = 'Configuring network and registering NetBird peer...';
+        }
+        if (elapsed >= WAIT_SECONDS * 0.7) {
+            statusEl.textContent = 'Almost ready, finalizing setup...';
+        }
+
+        if (elapsed >= WAIT_SECONDS) {
+            clearInterval(launchTimer);
+            launchTimer = null;
+            bar.style.width = '100%';
+            timerEl.textContent = 'Ready!';
+            statusEl.textContent = 'Loading instance details...';
+            setTimeout(() => {
+                progress.classList.remove('show');
+                refreshDashboard();
+            }, 500);
+        }
+    }, 1000);
+}
+
+async function instanceAction(action) {
+    if (action === 'destroy' && !confirm('Destroy your team\'s instance? This cannot be undone.')) return;
+    const errEl = document.getElementById('instance-error');
+    errEl.classList.remove('show');
+    try {
+        await api(`/api/instance/${action}`, {method: 'POST'});
+        refreshDashboard();
+    } catch (e) {
+        errEl.textContent = e.message;
+        errEl.classList.add('show');
+    }
+}
+
+// --- Teams ---
+async function createTeam() {
+    const errEl = document.getElementById('team-error');
+    const sucEl = document.getElementById('team-success');
+    errEl.classList.remove('show');
+    sucEl.classList.remove('show');
+    try {
+        const data = await api('/api/team/create', {
+            method: 'POST',
+            body: {team_name: document.getElementById('new-team-name').value}
+        });
+        currentTeam = data.team_name;
+        isCaptain = true;
+        sucEl.textContent = `Team created! Join code: ${data.join_code}`;
+        sucEl.classList.add('show');
+        setTimeout(() => refreshDashboard(), 500);
+    } catch (e) {
+        errEl.textContent = e.message;
+        errEl.classList.add('show');
+    }
+}
+
+async function joinTeam() {
+    const errEl = document.getElementById('team-error');
+    const sucEl = document.getElementById('team-success');
+    errEl.classList.remove('show');
+    sucEl.classList.remove('show');
+    try {
+        const data = await api('/api/team/join', {
+            method: 'POST',
+            body: {join_code: document.getElementById('join-code').value}
+        });
+        currentTeam = data.team_name;
+        isCaptain = false;
+        sucEl.textContent = `Joined team: ${data.team_name}`;
+        sucEl.classList.add('show');
+        setTimeout(() => refreshDashboard(), 500);
+    } catch (e) {
+        errEl.textContent = e.message;
+        errEl.classList.add('show');
+    }
+}
+
+// --- Flags ---
+async function refreshFlags() {
+    if (!currentTeam) return;
+    try {
+        const data = await api('/api/team/flags');
+        document.getElementById('flag-score').textContent = data.score;
+        document.getElementById('flag-count').textContent = data.flags_found;
+        document.getElementById('flag-total').textContent = data.total_flags;
+
+        const list = document.getElementById('sub-list');
+        const empty = document.getElementById('sub-empty');
+        if (data.submissions.length === 0) {
+            list.innerHTML = '';
+            empty.style.display = 'block';
+        } else {
+            empty.style.display = 'none';
+            list.innerHTML = data.submissions.map(s =>
+                `<li><span class="sub-flag">${esc(s.flag)}</span><span class="sub-meta">${esc(s.by)} &mdash; ${new Date(s.at).toLocaleString()}</span></li>`
+            ).join('');
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+async function submitFlag() {
+    const errEl = document.getElementById('flag-error');
+    const sucEl = document.getElementById('flag-success');
+    errEl.classList.remove('show');
+    sucEl.classList.remove('show');
+    const input = document.getElementById('flag-input');
+    try {
+        const data = await api('/api/flag', {
+            method: 'POST',
+            body: {flag: input.value}
+        });
+        sucEl.textContent = `Correct! Score: ${data.score} (${data.total_flags} flags)`;
+        sucEl.classList.add('show');
+        input.value = '';
+        refreshFlags();
+    } catch (e) {
+        errEl.textContent = e.message;
+        errEl.classList.add('show');
+    }
+}
+
+// --- Leaderboard ---
+async function refreshLeaderboard() {
+    try {
+        const data = await api('/api/leaderboard');
+        const container = document.getElementById('leaderboard-table');
+        if (data.leaderboard.length === 0) {
+            container.innerHTML = '<div class="empty-state">No teams have scored yet.</div>';
+            return;
+        }
+
+        let html = '<table><thead><tr><th>Rank</th><th>Team</th><th>Score</th><th>Flags</th><th>Members</th></tr></thead><tbody>';
+        for (const entry of data.leaderboard) {
+            let rankBadge = entry.rank;
+            if (entry.rank === 1) rankBadge = `<span class="badge badge-gold">#1</span>`;
+            else if (entry.rank === 2) rankBadge = `<span class="badge badge-silver">#2</span>`;
+            else if (entry.rank === 3) rankBadge = `<span class="badge badge-bronze">#3</span>`;
+            else rankBadge = `#${entry.rank}`;
+
+            html += `<tr>
+                <td>${rankBadge}</td>
+                <td>${esc(entry.team)}</td>
+                <td><strong>${entry.score}</strong></td>
+                <td>${entry.flags_found} / ${entry.total_flags}</td>
+                <td>${entry.members}</td>
+            </tr>`;
+        }
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+// --- Util ---
+function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+}
+
+// Enter key handlers
+document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Enter') return;
+    const id = e.target.id;
+    if (id === 'login-user' || id === 'login-pass') doLogin();
+    else if (id === 'reg-user' || id === 'reg-pass' || id === 'reg-event') doRegister();
+    else if (id === 'flag-input') submitFlag();
+    else if (id === 'new-team-name') createTeam();
+    else if (id === 'join-code') joinTeam();
 });
+
+// --- Init ---
+initSession();
 </script>
 </body>
 </html>

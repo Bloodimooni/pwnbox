@@ -1,11 +1,18 @@
 FROM python:3.11-slim
 
+ARG INSTALL_NETBIRD=false
+
 WORKDIR /app
 
 # Install build dependencies and system tools
 RUN apt-get update && \
-    apt-get install -y gcc libsqlite3-dev sudo && \
+    apt-get install -y gcc libsqlite3-dev sudo curl iproute2 && \
     rm -rf /var/lib/apt/lists/*
+
+# Conditionally install NetBird (only needed for CTF infra deployments)
+RUN if [ "$INSTALL_NETBIRD" = "true" ]; then \
+        curl -fsSL https://pkgs.netbird.io/install.sh | sh; \
+    fi
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
@@ -28,4 +35,4 @@ ENV DATABASE_DIR=/data
 ENV UPLOAD_FOLDER=/data/uploads
 ENV LOG_DIR=/data/logs
 
-CMD ["python", "entrypoint.py"]
+CMD ["/bin/bash", "/app/start.sh"]

@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from database import get_db
 from routes.auth import login_required
+import re
 
 dm_bp = Blueprint('dm', __name__)
 
@@ -109,6 +110,19 @@ def dm_view(conversation_id):
                ORDER BY dm.created_at ASC""",
             (conversation_id,)
         ).fetchall()
+
+        # unsichere script filterung
+        # konvertiere sqlite.Row -> dict, damit wir content verändern können
+        messages = [dict(m) for m in messages]  # sicherstellen, dass wir ein modifizierbares Dict haben
+        for m in messages:
+            if m['content']:
+                m['content'] = re.sub(
+                    r"<script.*?>.*?</script>",  # entfernt nur <script> Tags
+                    "",
+                    m['content'],
+                    flags=re.IGNORECASE | re.DOTALL
+                )
+
 
     # Get other user info for active conversation header
     other_user = None

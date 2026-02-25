@@ -26,7 +26,14 @@
                 <td><strong>{{ user.username }}</strong></td>
                 <td>{{ user.display_name }}</td>
                 <td>{{ user.email }}</td>
-                <td>{{ user.role }}</td>
+                <td>
+                    <form action="{{ url_for('admin.set_user_role', user_id=user.id) }}" method="POST" style="display:inline;">
+                        <select name="role" onchange="this.form.submit()" style="padding: 2px 4px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 4px;">
+                            <option value="user" {% if user.role != 'admin' %}selected{% endif %}>user</option>
+                            <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>admin</option>
+                        </select>
+                    </form>
+                </td>
                 <td>
                     {% if user.is_active %}
                         <span class="badge badge-success">Active</span>

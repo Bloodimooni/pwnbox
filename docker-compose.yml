@@ -1,7 +1,7 @@
 services:
   corpchat:
     build: .
-    container_name: corpchat-app
+    container_name: pwnbox
     ports:
       - "5000:5000"
     volumes:

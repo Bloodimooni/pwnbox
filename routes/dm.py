@@ -126,12 +126,26 @@ def dm_view(conversation_id):
 
     # Get other user info for active conversation header
     other_user = None
+    my_delete_requested = 0
+    other_delete_requested = 0
     if active_conv:
         other_user_id = active_conv['user2_id'] if active_conv['user1_id'] == current_user_id else active_conv['user1_id']
         other_user = db.execute(
             "SELECT id, username, display_name FROM users WHERE id = ?",
             (other_user_id,)
         ).fetchone()
+
+        # Determine deletion request state
+        if active_conv['user1_id'] == current_user_id:
+            my_delete_requested = active_conv['user1_delete_requested'] if 'user1_delete_requested' in active_conv.keys() else 0
+            other_delete_requested = active_conv['user2_delete_requested'] if 'user2_delete_requested' in active_conv.keys() else 0
+        else:
+            my_delete_requested = active_conv['user2_delete_requested'] if 'user2_delete_requested' in active_conv.keys() else 0
+            other_delete_requested = active_conv['user1_delete_requested'] if 'user1_delete_requested' in active_conv.keys() else 0
+
+    # Get user role
+    user = db.execute("SELECT role FROM users WHERE id = ?", (current_user_id,)).fetchone()
+    user_role = user['role'] if user else 'user'
 
     # Get all users for "new DM" picker (exclude self)
     all_users = db.execute(
@@ -144,4 +158,7 @@ def dm_view(conversation_id):
                            active_conv=active_conv,
                            other_user=other_user,
                            messages=messages,
-                           all_users=all_users)
+                           all_users=all_users,
+                           user_role=user_role,
+                           my_delete_requested=my_delete_requested,
+                           other_delete_requested=other_delete_requested)

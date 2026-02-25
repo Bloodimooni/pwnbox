@@ -1,5 +1,5 @@
 import os
-from flask import Flask, redirect, url_for, session, g
+from flask import Flask, redirect, url_for, session, g, send_from_directory, render_template_string
 from database import init_db, close_db, get_db
 
 
@@ -69,6 +69,74 @@ def create_app():
         if 'user_id' in session:
             return redirect(url_for('chat.index'))
         return redirect(url_for('auth.login'))
+
+    # CTF Challenge: Serve challenge directory with exposed git and directory listing
+    @app.route('/challenge/')
+    @app.route('/challenge/<path:filepath>')
+    def serve_challenge(filepath=''):
+        """Serve CTF challenge files including .git directory with directory listing"""
+        challenge_dir = os.path.join(os.path.dirname(__file__), 'static', 'challenge')
+        
+        # Security: prevent directory traversal
+        if '..' in filepath:
+            return 'Not Found', 404
+        
+        full_path = os.path.join(challenge_dir, filepath)
+        
+        # Check if path exists
+        if not os.path.exists(full_path):
+            return 'Not Found', 404
+        
+        # If it's a file, serve it
+        if os.path.isfile(full_path):
+            return send_from_directory(challenge_dir, filepath)
+        
+        # If it's a directory, generate HTML listing with wget-compatible directory listing
+        if os.path.isdir(full_path):
+            try:
+                items = os.listdir(full_path)
+                
+                # Sort: directories first, then files
+                dirs = sorted([f for f in items if os.path.isdir(os.path.join(full_path, f))])
+                files = sorted([f for f in items if os.path.isfile(os.path.join(full_path, f))])
+                
+                # Build parent directory link if not root
+                parent_link = ''
+                if filepath and filepath != '/':
+                    parent_path = '/'.join(filepath.split('/')[:-1])
+                    parent_link = f'<li><a href="/challenge/{parent_path}/">..</a></li>'
+                
+                # Build directory links
+                dir_links = ''
+                for d in dirs:
+                    new_path = filepath + '/' + d if filepath else d
+                    dir_links += f'<li><a href="/challenge/{new_path}/">{d}/</a></li>\n'
+                
+                # Build file links
+                file_links = ''
+                for f in files:
+                    new_path = filepath + '/' + f if filepath else f
+                    file_links += f'<li><a href="/challenge/{new_path}">{f}</a></li>\n'
+                
+                # Generate HTML (wget-compatible directory listing)
+                html = f'''<!DOCTYPE html>
+<html>
+<head>
+    <title>Index of /challenge/{filepath}</title>
+</head>
+<body>
+    <h1>Index of /challenge/{filepath}</h1>
+    <ul>
+        {parent_link}
+        {dir_links}
+        {file_links}
+    </ul>
+</body>
+</html>'''
+                
+                return html, 200, {'Content-Type': 'text/html'}
+            except Exception as e:
+                return f'Error listing directory: {str(e)}', 500
 
     return app
 

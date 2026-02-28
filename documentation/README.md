@@ -1,117 +1,107 @@
-# PwnBox Documentation Wiki
+# PwnBox Documentation
 
-Welcome to the comprehensive documentation for **PwnBox** -- a Capture The Flag (CTF) web application built as a corporate messaging platform. This wiki explains every aspect of the codebase in detail.
+This directory contains technical documentation for the PwnBox CTF platform.
 
 ---
 
 ## Table of Contents
 
-### Getting Started
-- [Getting Started](getting-started.md) -- How to install, configure, and run the application locally or with Docker.
+### Setup and Operation
+- [Getting Started](getting-started.md) — Host setup, configuration, and launching all components.
+- [Infrastructure](infrastructure.md) — Portal, scaler, instance manager, and NetBird integration.
 
-### Architecture & Design
-- [Architecture Overview](architecture.md) -- High-level system design, project structure, tech stack, and request lifecycle.
-- [Configuration & Deployment](configuration.md) -- All configuration classes, environment variables, Docker setup, and deployment details.
+### Application Reference
+- [Architecture Overview](architecture.md) — System design, project structure, and request lifecycle.
+- [Configuration and Deployment](configuration.md) — Configuration classes, environment variables, and Docker setup.
 
 ### Core Systems
-- [Authentication & Authorization](authentication.md) -- Login, registration, sessions, password resets, decorators, and audit logging.
-- [Chat System](chat-system.md) -- Channel-based messaging, real-time polling, message creation, and channel management.
-- [Direct Messaging](direct-messaging.md) -- 1-to-1 conversations, conversation lifecycle, and DM-specific behavior.
-- [File Management](file-management.md) -- File uploads, downloads, viewing, deletion, storage strategy, and allowed types.
-- [Search & Profiles](search-and-profiles.md) -- Global search functionality and user profile viewing/editing.
-- [Admin Panel](admin-panel.md) -- Admin dashboard, user management, password reset approval, settings, logs, backups, and debug endpoint.
+- [Authentication and Authorization](authentication.md) — Login, registration, sessions, and audit logging.
+- [Chat System](chat-system.md) — Channel messaging, real-time polling, and channel management.
+- [Direct Messaging](direct-messaging.md) — One-to-one conversations and conversation lifecycle.
+- [File Management](file-management.md) — Upload, download, storage, and allowed file types.
+- [Search and Profiles](search-and-profiles.md) — Global search and user profile management.
+- [Admin Panel](admin-panel.md) — User management, settings, logs, and backups.
 
-### API & Frontend
-- [REST API Reference](api-reference.md) -- Complete documentation of every `/api/v1` endpoint with request/response examples.
-- [Frontend JavaScript](frontend.md) -- Detailed breakdown of `chat.js`, `dm.js`, `admin.js`, and the base template's inline JavaScript.
-- [Templates](templates.md) -- Every Jinja2 template explained: layout hierarchy, blocks, and page-specific behavior.
+### API and Frontend
+- [REST API Reference](api-reference.md) — All `/api/v1` endpoints with request and response examples.
+- [Frontend JavaScript](frontend.md) — Breakdown of `chat.js`, `dm.js`, `admin.js`, and inline scripts.
+- [Templates](templates.md) — Jinja2 template hierarchy and page-specific behaviour.
 
 ### Data Layer
-- [Database Schema](database-schema.md) -- Every table, column, type, constraint, relationship, migration logic, and seed data.
+- [Database Schema](database-schema.md) — Tables, columns, constraints, relationships, and migrations.
 
 ---
 
 ## Quick Reference
 
-| Resource | URL |
-|----------|-----|
-| Application | `http://localhost:5000` |
-| Admin Panel | `http://localhost:5000/admin` |
-| REST API Base | `http://localhost:5000/api/v1` |
-| Health Check | `http://localhost:5000/api/v1/health` |
+### Service URLs
+
+| Service | Default URL |
+|---------|-------------|
+| CorpChat application | `http://localhost:8080` |
+| CTF player portal | `http://localhost:8888` |
+| Operator scaler | `http://localhost:8889` |
+| CorpChat admin panel | `http://<instance-ip>:8080/admin` |
+| CorpChat REST API | `http://<instance-ip>:8080/api/v1` |
 
 ### Default Accounts
 
-| Role | Username | Password | Purpose |
-|------|----------|----------|---------|
-| Regular User | `demo` | `demo123` | Demo/testing account |
-| Admin | `admin` | `admin2026!` | Admin portal access |
-| Bot | `chatbot` | `bot12345` | Automated assistant account |
+| Role | Username | Password |
+|------|----------|----------|
+| Regular user | `demo` | `demo123` |
+| Administrator | `admin` | `admin2026!` |
+| Bot | `chatbot` | `bot12345` |
 
-### Tech Stack Summary
+### Run Script Commands
 
-| Component | Technology |
-|-----------|------------|
-| Backend | Python 3.11 + Flask 3.0.0 |
-| Database | SQLite3 (via `sqlite3` stdlib) |
-| Passwords | Werkzeug 3.0.1 (`generate_password_hash` / `check_password_hash`) |
-| Frontend | Vanilla JavaScript, HTML5, Jinja2 templates |
-| Styling | Custom CSS (Discord/Slack-inspired dark theme) |
-| Containerization | Docker + Docker Compose |
+| Command | Purpose |
+|---------|---------|
+| `./setup-host.sh` | One-time host environment setup |
+| `./run.sh portal` | Start the CTF player portal |
+| `./run.sh scale` | Start the operator scaler |
+| `./run.sh app` | Run CorpChat standalone in Docker |
+| `./run.sh compose` | Run via Docker Compose |
+| `./run.sh build` | Build or rebuild the Docker image |
 
 ---
 
-## Project Structure at a Glance
+## Project Structure
 
 ```
 pwnbox/
-├── app.py                    # Flask application factory
-├── config.py                 # Configuration classes (Dev/Prod)
-├── database.py               # SQLite init, migrations, seed data
-├── schema.sql                # Database table definitions
-├── requirements.txt          # Python dependencies
-├── Dockerfile                # Container build instructions
-├── docker-compose.yml        # One-command deployment
-├── routes/                   # All route blueprints
-│   ├── __init__.py
-│   ├── auth.py               # Authentication & authorization
-│   ├── chat.py               # Channel chat
-│   ├── dm.py                 # Direct messaging
-│   ├── profile.py            # User profiles
-│   ├── files.py              # File upload/download
-│   ├── search.py             # Search
-│   ├── admin.py              # Admin panel
-│   └── api.py                # REST API v1
-├── templates/                # Jinja2 HTML templates
-│   ├── base.html
-│   ├── auth/
-│   ├── chat/
-│   ├── dm/
-│   ├── profile/
-│   ├── files/
-│   ├── search/
-│   └── admin/
-├── static/                   # Static assets
-│   ├── css/
-│   │   ├── main.css
-│   │   └── admin.css
-│   └── js/
-│       ├── chat.js
-│       ├── dm.js
-│       └── admin.js
-├── data/                     # Runtime data
-│   ├── corpchat.db
-│   └── backups/
-├── uploads/                  # User-uploaded files
-└── logs/                     # Application logs
+├── app.py                       # Flask application factory
+├── config.py                    # Configuration classes
+├── database.py                  # Database initialisation and migrations
+├── schema.sql                   # SQLite table definitions
+├── requirements.txt             # Python dependencies
+├── entrypoint.py                # Container startup script
+├── run.sh                       # Unified runner for all components
+├── setup-host.sh                # One-time host environment setup
+├── docker/
+│   ├── Dockerfile               # Container image definition
+│   └── docker-compose.yml       # Single-instance development stack
+├── infra/
+│   ├── config.ini               # Infrastructure configuration
+│   ├── portal.py                # CTF self-service portal
+│   ├── scaler.py                # Operator instance scaler
+│   ├── pwnbox-manager.py        # Instance lifecycle CLI
+│   ├── flags.json               # Flag definitions
+│   └── templates/               # Portal and scaler HTML templates
+├── reversing-challenge/
+│   └── admin-tools.c            # Source for the compiled challenge binary
+├── routes/                      # Flask route blueprints
+├── templates/                   # Jinja2 application templates
+├── static/                      # CSS and JavaScript assets
+└── documentation/               # This documentation directory
 ```
 
 ---
 
-## How to Navigate This Wiki
+## Navigation Guide
 
-- **New to the project?** Start with [Getting Started](getting-started.md) and then [Architecture Overview](architecture.md).
-- **Working on the backend?** Read [Authentication](authentication.md) first, then the specific route module you need.
+- **New to the project?** Begin with [Getting Started](getting-started.md), then [Infrastructure](infrastructure.md).
+- **Running a CTF event?** See [Infrastructure](infrastructure.md) for portal and scaler operation.
+- **Working on the application backend?** Read [Authentication](authentication.md) first, then the relevant route module.
 - **Working on the frontend?** See [Frontend JavaScript](frontend.md) and [Templates](templates.md).
-- **Building an integration?** The [REST API Reference](api-reference.md) has everything you need.
+- **Integrating with the API?** The [REST API Reference](api-reference.md) covers all endpoints.
 - **Database questions?** See [Database Schema](database-schema.md).

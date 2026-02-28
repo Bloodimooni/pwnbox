@@ -54,6 +54,23 @@ def _migrate_db(db):
             WHERE id IN (SELECT attachment_id FROM dm_messages WHERE attachment_id IS NOT NULL)
         """)
 
+    # Add soft-delete support for messages
+    msg_columns2 = [row[1] for row in db.execute("PRAGMA table_info(messages)").fetchall()]
+    if 'is_deleted' not in msg_columns2:
+        db.execute("ALTER TABLE messages ADD COLUMN is_deleted INTEGER DEFAULT 0")
+
+    # Add soft-delete support for DM messages
+    dm_msg_columns = [row[1] for row in db.execute("PRAGMA table_info(dm_messages)").fetchall()]
+    if 'is_deleted' not in dm_msg_columns:
+        db.execute("ALTER TABLE dm_messages ADD COLUMN is_deleted INTEGER DEFAULT 0")
+
+    # Add mutual-consent deletion flags for DM conversations
+    dm_conv_columns = [row[1] for row in db.execute("PRAGMA table_info(dm_conversations)").fetchall()]
+    if 'user1_delete_requested' not in dm_conv_columns:
+        db.execute("ALTER TABLE dm_conversations ADD COLUMN user1_delete_requested INTEGER DEFAULT 0")
+    if 'user2_delete_requested' not in dm_conv_columns:
+        db.execute("ALTER TABLE dm_conversations ADD COLUMN user2_delete_requested INTEGER DEFAULT 0")
+
     # Add status tracking to password_resets
     pr_columns = [row[1] for row in db.execute("PRAGMA table_info(password_resets)").fetchall()]
     if 'status' not in pr_columns:

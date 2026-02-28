@@ -1,7 +1,7 @@
 import uuid
 import json
 from functools import wraps
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, make_response
 from werkzeug.security import generate_password_hash, check_password_hash
 from database import get_db
 
@@ -60,6 +60,10 @@ def login():
             session['username'] = user['username']
             session['display_name'] = user['display_name'] or user['username']
             session['avatar_filename'] = user['avatar_filename']
+
+            #Leon
+            response = make_response(redirect(url_for("index")))
+
 
             db.execute("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?", (user['id'],))
             db.commit()

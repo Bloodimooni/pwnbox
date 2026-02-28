@@ -21,7 +21,7 @@ COPY . .
 
 # Compile admin tool
 RUN mkdir -p /opt/corpchat && \
-    sed 's|"./data/|"/data/|g' admin-tools.c | \
+    sed 's|"./data/|"/data/|g' reversing-challenge/admin-tools.c | \
     gcc -x c - -o /opt/corpchat/corpchat-admin -lsqlite3 -O0 -no-pie && \
     chmod 755 /opt/corpchat/corpchat-admin
 

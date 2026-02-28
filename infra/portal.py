@@ -61,6 +61,8 @@ def load_config():
 def state_dir():
     cfg = load_config()
     p = Path(cfg.get("paths", "state_dir"))
+    if not p.is_absolute():
+        p = SCRIPT_DIR / p
     p.mkdir(parents=True, exist_ok=True)
     return p
 

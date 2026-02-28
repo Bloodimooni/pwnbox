@@ -134,8 +134,7 @@ cmd_portal() {
 }
 
 cmd_scale() {
-    info "Starting PwnBox Scaler..."
-    info "  Dashboard: http://localhost:8889"
+    info "  Starting PwnBox Scaler..."
     echo ""
 
     # Autoscaler instances require NetBird
@@ -229,7 +228,7 @@ shift 2>/dev/null || true
 case "$CMD" in
     app)          cmd_app       "$@" ;;
     portal)       cmd_portal    "$@" ;;
-    scale)        cmd_scale "$@" ;;
+    scale|scaler) cmd_scale     "$@" ;;
     compose)      cmd_compose   "$@" ;;
     build)        cmd_build     "$@" ;;
     help|--help|-h) cmd_help  ;;

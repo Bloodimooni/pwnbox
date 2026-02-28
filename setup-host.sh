@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-CONFIG="$(dirname "$0")/config.ini"
+CONFIG="$(dirname "$0")/infra/config.ini"
 
 # Simple INI parser
 get_config() {
@@ -45,7 +45,7 @@ fi
 # Build the Docker image
 echo ""
 echo "=== Building PwnBox Docker image ==="
-PWNBOX_DIR="$(dirname "$0")/.."
+PWNBOX_DIR="$(dirname "$0")"
 docker build -t "$(get_config general image_name)" "$PWNBOX_DIR"
 
 echo ""

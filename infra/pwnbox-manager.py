@@ -64,25 +64,48 @@ def run(cmd, check=True, capture=True):
 
 
 def next_available_ip(cfg, instances):
-    """Find the next available Docker container IP."""
+    #Find the next available Docker container IP.
+
     start = cfg.getint("general", "container_ip_start")
     max_inst = cfg.getint("general", "max_instances")
+    network = cfg.get("general", "docker_network")
+    docker_prefix = cfg.get("general", "docker_subnet").rsplit(".", 2)[0]
+
     used_offsets = set()
+
+    # From state file
     for inst in instances.values():
-        last_octet = int(inst["container_ip"].rsplit(".", 1)[1])
-        used_offsets.add(last_octet)
+        try:
+            last_octet = int(inst["container_ip"].rsplit(".", 1)[1])
+            used_offsets.add(last_octet)
+        except (KeyError, ValueError):
+            pass
+
+    # From Docker network
+    result = subprocess.run(
+        ["docker", "network", "inspect", network, "--format", "{{json .Containers}}"],
+        capture_output=True, text=True
+    )
+    if result.returncode == 0 and result.stdout.strip() not in ("", "null"):
+        try:
+            containers = json.loads(result.stdout.strip())
+            for c in containers.values():
+                ip = c.get("IPv4Address", "").split("/")[0]
+                if ip:
+                    last_octet = int(ip.rsplit(".", 1)[1])
+                    used_offsets.add(last_octet)
+        except (json.JSONDecodeError, ValueError):
+            pass
 
     for offset in range(start, start + max_inst):
         if offset not in used_offsets:
-            docker_prefix = cfg.get("general", "docker_subnet").rsplit(".", 2)[0]
-            container_ip = f"{docker_prefix}.0.{offset}"
-            return container_ip
+            return f"{docker_prefix}.0.{offset}"
 
     return None
 
 
 def start_container(cfg, team, container_ip):
-    """Start a Docker container for the team with NetBird."""
+
     image = cfg.get("general", "image_name")
     network = cfg.get("general", "docker_network")
     container_name = f"pwnbox-{team}"
@@ -107,7 +130,7 @@ def start_container(cfg, team, container_ip):
 
 
 def get_netbird_ip(team, retries=10, delay=3):
-    """Retrieve the container's NetBird IP after it registers."""
+
     container_name = f"pwnbox-{team}"
     for i in range(retries):
         result = run(
@@ -124,7 +147,7 @@ def get_netbird_ip(team, retries=10, delay=3):
 
 
 def stop_container(team):
-    """Stop and remove a team's container."""
+
     container_name = f"pwnbox-{team}"
     run(f"docker rm -f {container_name}", check=False)
 
@@ -145,7 +168,7 @@ def cmd_create(cfg, team):
 
         max_inst = cfg.getint("general", "max_instances")
         if len(instances) >= max_inst:
-            print(f"Error: Maximum instances ({max_inst}) reached. Try again later.")
+            print(f"Error: Maximum amount of instances ({max_inst}) reached.")
             sys.exit(1)
 
         container_ip = next_available_ip(cfg, instances)
@@ -159,6 +182,13 @@ def cmd_create(cfg, team):
 
         print(f"Creating instance for team '{team}'...")
         print(f"  Container IP: {container_ip}")
+
+        # Remove any orphaned container with this name before starting
+        container_name = f"pwnbox-{team}"
+        r = subprocess.run(["docker", "inspect", container_name], capture_output=True)
+        if r.returncode == 0:
+            print(f"  Removing orphaned container '{container_name}'...")
+            subprocess.run(["docker", "rm", "-f", container_name], capture_output=True)
 
         # Start container (NetBird starts inside automatically)
         start_container(cfg, team, container_ip)
@@ -361,9 +391,10 @@ def cmd_resume(cfg, team):
 
 def cmd_rebuild(cfg):
     image = cfg.get("general", "image_name")
-    pwnbox_dir = SCRIPT_DIR / ".."
+    project_root = SCRIPT_DIR / ".."
+    dockerfile = project_root / "docker" / "Dockerfile"
     print(f"Rebuilding image '{image}' (with NetBird)...")
-    run(f"docker build --build-arg INSTALL_NETBIRD=true -t {image} {pwnbox_dir}", capture=False)
+    run(f"docker build --build-arg INSTALL_NETBIRD=true -f {dockerfile} -t {image} {project_root}", capture=False)
     print("Done. New instances will use the updated image.")
     print("Note: Existing instances still run the old image.")
 

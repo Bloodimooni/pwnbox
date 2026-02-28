@@ -1,30 +1,53 @@
 #!/usr/bin/env python3
-"""PwnBox CTF Self-Service Portal
-
-King of the Hill CTF platform with user accounts, teams, flag submission,
-and a leaderboard. Run on the host machine.
-
-Usage: python3 portal.py
-"""
 
 import configparser
 import json
+import logging
 import os
 import string
 import subprocess
 import sys
-from datetime import datetime, timezone
+import threading
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 from pathlib import Path
 
 import bcrypt
-from flask import Flask, render_template, request, jsonify, session
+from flask import Flask, render_template, request, jsonify, session, redirect
 
 SCRIPT_DIR = Path(__file__).parent
 CONFIG_PATH = SCRIPT_DIR / "config.ini"
 MANAGER = SCRIPT_DIR / "pwnbox-manager.py"
 
 app = Flask(__name__, template_folder=str(SCRIPT_DIR / "templates"))
+
+# Cleanup lock
+_cleanup_lock = threading.Lock()
+
+def _trigger_cleanup():
+    if _cleanup_lock.acquire(blocking=False):
+        try:
+            now = datetime.now(timezone.utc)
+
+            instances = load_instances()
+            expired_teams = [
+                team for team, inst in instances.items()
+                if datetime.fromisoformat(inst["expires_at"]) <= now
+            ]
+
+            run_manager("cleanup")
+
+            # Set 16h cooldown on teams
+            if expired_teams:
+                teams = load_teams()
+                cooldown_until = (now + timedelta(hours=16)).isoformat()
+                for team_name in expired_teams:
+                    if team_name in teams:
+                        teams[team_name]["last_destroyed_at"] = now.isoformat()
+                        teams[team_name]["cooldown_until"] = cooldown_until
+                save_teams(teams)
+        finally:
+            _cleanup_lock.release()
 
 
 # --- Config & State helpers ---
@@ -97,6 +120,10 @@ def run_manager(command, team=None):
     if team:
         cmd.append(team)
     result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.stdout:
+        print(result.stdout, end="", flush=True)
+    if result.stderr:
+        print(result.stderr, end="", file=sys.stderr, flush=True)
     return result.returncode, result.stdout, result.stderr
 
 
@@ -132,6 +159,11 @@ def captain_required(f):
 
 @app.route("/")
 def index():
+    return render_template("admin.html")
+
+
+@app.route("/login")
+def login_page():
     cfg = load_config()
     ttl = cfg.getint("general", "instance_ttl_hours")
     return render_template("portal.html", ttl_hours=ttl)
@@ -374,6 +406,19 @@ def api_team_info():
     subs = load_submissions()
     team_subs = subs.get(team_name, {})
 
+    # Check for active cooldown
+    cooldown_info = None
+    cooldown_until_str = team.get("cooldown_until")
+    if cooldown_until_str:
+        until_dt = datetime.fromisoformat(cooldown_until_str)
+        now = datetime.now(timezone.utc)
+        remaining_sec = (until_dt - now).total_seconds()
+        if remaining_sec > 0:
+            cooldown_info = {
+                "until": cooldown_until_str,
+                "remaining_minutes": int(remaining_sec / 60) + 1,
+            }
+
     result = {
         "team_name": team_name,
         "captain": team["captain"],
@@ -382,6 +427,7 @@ def api_team_info():
         "instance": instance_info,
         "score": team_subs.get("score", 0),
         "flags_found": len(team_subs.get("flags", [])),
+        "cooldown": cooldown_info,
     }
 
     if is_captain:
@@ -390,16 +436,35 @@ def api_team_info():
     return jsonify(result)
 
 
-# --- Instance API (captain only) ---
+# --- Instance API --- 
 
 @app.route("/api/instance/launch", methods=["POST"])
 @captain_required
 def api_instance_launch():
     team_name = session["team"]
+    now = datetime.now(timezone.utc)
+
+    # Enforce 1-hour cooldown after manual destroy
+    teams = load_teams()
+    team = teams.get(team_name, {})
+    cooldown_until = team.get("cooldown_until")
+    if cooldown_until:
+        until_dt = datetime.fromisoformat(cooldown_until)
+        if now < until_dt:
+            remaining = int((until_dt - now).total_seconds() / 60) + 1
+            return jsonify({"error": f"Instance cooldown active. Try again in {remaining} minute(s)."}), 429
+
     code, stdout, stderr = run_manager("create", team_name)
     if code != 0:
         error = stderr.strip() or stdout.strip()
         return jsonify({"error": error}), 400
+
+    teams = load_teams()
+    team = teams.get(team_name, {})
+    if not team.get("first_instance_at"):
+        team["first_instance_at"] = now.isoformat()
+        teams[team_name] = team
+        save_teams(teams)
 
     instances = load_instances()
     inst = instances.get(team_name, {})
@@ -420,6 +485,21 @@ def api_instance_launch():
 @captain_required
 def api_instance_destroy():
     team_name = session["team"]
+    now = datetime.now(timezone.utc)
+
+    teams = load_teams()
+    team = teams.get(team_name, {})
+    if team.get("paused_at"):
+        paused_dt = datetime.fromisoformat(team["paused_at"])
+        team["total_pause_seconds"] = team.get("total_pause_seconds", 0.0) + (now - paused_dt).total_seconds()
+        team.pop("paused_at")
+
+    # Set 1h cooldown so teams cant abuse destroy & recreate
+    team["last_destroyed_at"] = now.isoformat()
+    team["cooldown_until"] = (now + timedelta(hours=1)).isoformat()
+    teams[team_name] = team
+    save_teams(teams)
+
     code, stdout, stderr = run_manager("destroy", team_name)
     if code != 0:
         error = stderr.strip() or stdout.strip()
@@ -432,10 +512,16 @@ def api_instance_destroy():
 @captain_required
 def api_instance_pause():
     team_name = session["team"]
+    now = datetime.now(timezone.utc)
+
     code, stdout, stderr = run_manager("pause", team_name)
     if code != 0:
         error = stderr.strip() or stdout.strip()
         return jsonify({"error": error}), 400
+
+    teams = load_teams()
+    teams[team_name]["paused_at"] = now.isoformat()
+    save_teams(teams)
 
     return jsonify({"status": "ok"})
 
@@ -444,12 +530,54 @@ def api_instance_pause():
 @captain_required
 def api_instance_resume():
     team_name = session["team"]
+    now = datetime.now(timezone.utc)
+
     code, stdout, stderr = run_manager("resume", team_name)
     if code != 0:
         error = stderr.strip() or stdout.strip()
         return jsonify({"error": error}), 400
 
+    # Bank pause duration
+    teams = load_teams()
+    team = teams.get(team_name, {})
+    if team.get("paused_at"):
+        paused_dt = datetime.fromisoformat(team["paused_at"])
+        team["total_pause_seconds"] = team.get("total_pause_seconds", 0.0) + (now - paused_dt).total_seconds()
+        team.pop("paused_at")
+        teams[team_name] = team
+        save_teams(teams)
+
     return jsonify({"status": "ok"})
+
+
+# --- Scoring ---
+
+def calculate_flag_score(team_name):
+    teams = load_teams()
+    team = teams.get(team_name, {})
+
+    first_at = team.get("first_instance_at")
+
+    if not first_at:
+        instances = load_instances()
+        inst = instances.get(team_name)
+        if inst:
+            first_at = inst.get("created_at")
+
+    if not first_at:
+        return 1000 
+
+    now = datetime.now(timezone.utc)
+    first_dt = datetime.fromisoformat(first_at)
+    total_pause = team.get("total_pause_seconds", 0.0)
+
+    if team.get("paused_at"):
+        paused_dt = datetime.fromisoformat(team["paused_at"])
+        total_pause += (now - paused_dt).total_seconds()
+
+    elapsed_min = max(0, (now - first_dt).total_seconds() - total_pause) / 60
+    max_pts, min_pts, decay_min = 1000, 100, 240 
+    return max(min_pts, round(max_pts - (max_pts - min_pts) * min(1.0, elapsed_min / decay_min)))
 
 
 # --- Flag API ---
@@ -479,12 +607,14 @@ def api_flag_submit():
     if flag in team_subs["flags"]:
         return jsonify({"error": "Flag already submitted by your team"}), 409
 
+    points = calculate_flag_score(team_name)
     team_subs["flags"].append(flag)
-    team_subs["score"] += 100
+    team_subs["score"] += points
     team_subs["submissions"].append({
         "flag": flag,
         "by": username,
         "at": datetime.now(timezone.utc).isoformat(),
+        "points": points,
     })
     save_submissions(subs)
 
@@ -492,6 +622,7 @@ def api_flag_submit():
         "status": "ok",
         "score": team_subs["score"],
         "total_flags": len(team_subs["flags"]),
+        "points_earned": points,
     })
 
 
@@ -541,11 +672,105 @@ def api_leaderboard():
     return jsonify({"leaderboard": board, "total_flags": total_flags})
 
 
+@app.route("/mod")
+def admin_dashboard():
+    return redirect("/")
+
+
+@app.route("/api/mod/overview")
+def api_admin_overview():
+
+    teams = load_teams()
+    instances = load_instances()
+    subs = load_submissions()
+    total_flags = len(load_flags())
+    now = datetime.now(timezone.utc)
+
+    result = []
+    for team_name, team in teams.items():
+        instance = instances.get(team_name)
+        team_subs = subs.get(team_name, {"flags": [], "score": 0})
+
+        inst_info = None
+        if instance:
+            expires = datetime.fromisoformat(instance["expires_at"])
+            remaining = (expires - now).total_seconds()
+            cfg = load_config()
+            inst_info = {
+                "netbird_ip": instance.get("netbird_ip", ""),
+                "container_ip": instance.get("container_ip", ""),
+                "expires_at": instance["expires_at"],
+                "remaining_seconds": max(0, int(remaining)),
+                "remaining_minutes": max(0, int(remaining / 60)),
+                "expired": remaining <= 0,
+                "paused": instance.get("paused", False),
+                "app_port": cfg.get("general", "container_app_port"),
+            }
+
+        cooldown_info = None
+        cooldown_until_str = team.get("cooldown_until")
+        if cooldown_until_str:
+            until_dt = datetime.fromisoformat(cooldown_until_str)
+            remaining_sec = (until_dt - now).total_seconds()
+            if remaining_sec > 0:
+                cooldown_info = {
+                    "until": cooldown_until_str,
+                    "remaining_seconds": int(remaining_sec),
+                }
+
+        result.append({
+            "team": team_name,
+            "captain": team["captain"],
+            "members": team["members"],
+            "member_count": len(team["members"]),
+            "score": team_subs.get("score", 0),
+            "flags_found": len(team_subs.get("flags", [])),
+            "total_flags": total_flags,
+            "instance": inst_info,
+            "cooldown": cooldown_info,
+        })
+
+    result.sort(key=lambda x: x["score"], reverse=True)
+    for i, entry in enumerate(result):
+        entry["rank"] = i + 1
+
+    # Trigger cleanup
+    if any(t["instance"] and t["instance"]["expired"] for t in result):
+        threading.Thread(target=_trigger_cleanup, daemon=True).start()
+
+    return jsonify({
+        "teams": result,
+        "total_flags": total_flags,
+        "total_teams": len(teams),
+        "active_instances": sum(
+            1 for t in result
+            if t["instance"] and not t["instance"]["expired"] and not t["instance"]["paused"]
+        ),
+        "server_time": now.isoformat(),
+    })
+
+
 if __name__ == "__main__":
     cfg = load_config()
     host = cfg.get("portal", "host", fallback="0.0.0.0")
     port = cfg.getint("portal", "port", fallback=8888)
     secret = cfg.get("portal", "secret_key", fallback="NUBU4Q95W9LAH5G7GO0M4XVTBMS4EZC6")
     app.secret_key = secret
+
+    log_dir = Path(cfg.get("paths", "log_dir", fallback="./logs"))
+    if not log_dir.is_absolute():
+        log_dir = SCRIPT_DIR / log_dir
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_path = log_dir / "access.log"
+
+    wz = logging.getLogger("werkzeug")
+    wz.setLevel(logging.INFO)
+    wz.handlers = []        
+    wz.propagate = False
+    fh = logging.FileHandler(log_path)
+    fh.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
+    wz.addHandler(fh)
+
     print(f"PwnBox Portal running on http://{host}:{port}")
+    print(f"HTTP access log → {log_path}", flush=True)
     app.run(host=host, port=port, debug=False)

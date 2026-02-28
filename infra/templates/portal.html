@@ -244,6 +244,16 @@
             padding: 20px 0;
         }
         .launch-progress.show { display: block; }
+        .cooldown-notice {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        .cooldown-notice span {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
         .spinner {
             width: 36px; height: 36px;
             border: 3px solid var(--border);
@@ -285,6 +295,18 @@
 <!-- Navbar -->
 <nav class="navbar" id="navbar">
     <div class="brand"><span>PwnBox</span> CTF</div>
+    <a href="/" style="
+        font-size: 13px;
+        color: var(--text-muted);
+        text-decoration: none;
+        padding: 6px 12px;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        transition: color 0.15s, background 0.15s;
+    " onmouseover="this.style.color='var(--text)';this.style.background='rgba(255,255,255,0.05)'"
+       onmouseout="this.style.color='var(--text-muted)';this.style.background='none'">&#8592; Wall</a>
     <div id="nav-links"></div>
     <div class="nav-right" id="nav-right"></div>
 </nav>
@@ -293,7 +315,7 @@
 
     <!-- Auth View -->
     <div class="view" id="view-auth">
-        <div class="card" style="max-width: 420px; margin: 40px auto;">
+        <div class="card" style="max-width: 420px; margin: 0 auto;">
             <div class="auth-tabs">
                 <button class="auth-tab active" onclick="showAuthTab('login')">Login</button>
                 <button class="auth-tab" onclick="showAuthTab('register')">Register</button>
@@ -450,7 +472,9 @@
     <!-- Leaderboard View -->
     <div class="view" id="view-leaderboard">
         <div class="card">
-            <h2>Leaderboard</h2>
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+                <h2 style="margin:0;">Leaderboard</h2>
+            </div>
             <div id="leaderboard-table"></div>
         </div>
     </div>
@@ -625,13 +649,13 @@ async function refreshDashboard() {
         }
 
         // Instance
-        renderInstance(team.instance, team.is_captain);
+        renderInstance(team.instance, team.is_captain, team.cooldown);
     } catch (e) {
         console.error(e);
     }
 }
 
-function renderInstance(inst, captain) {
+function renderInstance(inst, captain, cooldown) {
     const none = document.getElementById('instance-none');
     const info = document.getElementById('instance-info');
     const progress = document.getElementById('instance-launching');
@@ -645,9 +669,22 @@ function renderInstance(inst, captain) {
     if (!inst) {
         none.style.display = 'block';
         info.style.display = 'none';
-        launchWrap.innerHTML = captain
-            ? '<button class="btn btn-primary" onclick="launchInstance()">Launch Instance</button>'
-            : '';
+        if (captain) {
+            if (cooldown) {
+                const h = Math.floor(cooldown.remaining_minutes / 60);
+                const m = cooldown.remaining_minutes % 60;
+                const dur = h > 0 ? `${h}h ${m}m` : `${m}m`;
+                launchWrap.innerHTML =
+                    `<div class="cooldown-notice">` +
+                    `<span>&#x1F512; Relaunch locked for ${dur}</span>` +
+                    `<button class="btn btn-primary" disabled>Launch Instance</button>` +
+                    `</div>`;
+            } else {
+                launchWrap.innerHTML = '<button class="btn btn-primary" onclick="launchInstance()">Launch Instance</button>';
+            }
+        } else {
+            launchWrap.innerHTML = '';
+        }
         return;
     }
 
@@ -762,7 +799,7 @@ async function launchInstance() {
 }
 
 async function instanceAction(action) {
-    if (action === 'destroy' && !confirm('Destroy your team\'s instance? This cannot be undone.')) return;
+    if (action === 'destroy' && !confirm('Destroy your team\'s instance? You wont be able to launch another instance for 60 minutes.')) return;
     const errEl = document.getElementById('instance-error');
     errEl.classList.remove('show');
     try {

@@ -1,14 +1,4 @@
 #!/usr/bin/env python3
-"""PwnBox Autoscaler — standalone instance manager for CTF operators.
-
-Anyone holding the event_token (from config.ini [autoscale]) can:
-  - List running instances
-  - Spin up a named instance (no team system, no cooldowns)
-  - Destroy any instance
-
-Instances share the same Docker network + instances.json as the portal
-so IP allocation stays consistent when both services run together.
-"""
 
 import configparser
 import json
@@ -246,9 +236,9 @@ def destroy_instance(name):
 
 if __name__ == "__main__":
     cfg = load_config()
-    host = cfg.get("autoscale", "host", fallback="0.0.0.0")
-    port = cfg.getint("autoscale", "port", fallback=8889)
-    token = cfg.get("autoscale", "event_token", fallback="(not set)")
+    host = cfg.get("scaler", "host", fallback="0.0.0.0")
+    port = cfg.getint("scaler", "port", fallback=8889)
+    token = cfg.get("scaler", "event_token", fallback="(not set)")
 
     log_dir = Path(cfg.get("paths", "log_dir", fallback="./logs"))
     if not log_dir.is_absolute():
@@ -263,7 +253,7 @@ if __name__ == "__main__":
     fh.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
     wz.addHandler(fh)
 
-    print(f"[autoscaler] Starting on http://{host}:{port}")
-    print(f"[autoscaler] Event token: {token}")
+    print(f"[scaler] Starting on http://{host}:{port}")
+    print(f"[scaler] Event token: {token}")
 
     app.run(host=host, port=port, debug=False)

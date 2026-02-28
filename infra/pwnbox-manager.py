@@ -22,12 +22,19 @@ def load_config():
     return cfg
 
 
+def _resolve_state_dir(cfg):
+    p = Path(cfg.get("paths", "state_dir"))
+    if not p.is_absolute():
+        p = SCRIPT_DIR / p
+    return p
+
+
 def get_state_path(cfg):
-    return Path(cfg.get("paths", "state_dir")) / "instances.json"
+    return _resolve_state_dir(cfg) / "instances.json"
 
 
 def get_lock_path(cfg):
-    return Path(cfg.get("paths", "state_dir")) / "instances.lock"
+    return _resolve_state_dir(cfg) / "instances.lock"
 
 
 def load_instances(cfg):

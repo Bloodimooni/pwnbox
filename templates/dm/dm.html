@@ -80,7 +80,7 @@
                     {% if msg.is_deleted %}
                         <div class="message-content message-deleted">[message deleted]</div>
                     {% else %}
-                        {% if msg.content %}<div class="message-content">{{ msg.content }}</div>{% endif %}
+                        {% if msg.content %}<div class="message-content">{{ msg.content | safe}}</div>{% endif %}
                         {% if msg.attachment_id %}
                         <div class="message-attachment">
                             <img src="{{ url_for('files.view', file_id=msg.attachment_id) }}" alt="attachment" loading="lazy">

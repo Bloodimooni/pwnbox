@@ -1,0 +1,24 @@
+services:
+  corpchat:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        INSTALL_NETBIRD: "false"
+    image: pwnbox-ctf
+    container_name: corpchat-dev
+    ports:
+      - "8080:8080"
+      - "2222:22"
+    volumes:
+      - corpchat_data:/data
+    environment:
+      - FLASK_CONFIG=config.ProductionConfig
+      - SECRET_KEY=corpchat-dev-secret
+      - DATABASE_DIR=/data
+      - UPLOAD_FOLDER=/data/uploads
+      - LOG_DIR=/data/logs
+    restart: unless-stopped
+
+volumes:
+  corpchat_data:

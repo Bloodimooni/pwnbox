@@ -19,28 +19,73 @@ const puppeteer = require("puppeteer");
   fonts-liberation \
   xdg-utils*/
 
-(async () => {
+//start bot with node bot.js
+
+/*(async () => {
   const browser = await puppeteer.launch({
     headless: true,
     args: ["--no-sandbox"]
-  });
+  });*/
+  (async () => {
+    const browser = await puppeteer.launch({
+      headless: true,
+      executablePath: "/home/leon/.cache/puppeteer/chrome/linux-121.0.6167.85/chrome-linux64/chrome",
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox"
+      ]
+    });
 
   const page = await browser.newPage();
 
-  // Login
-  await page.goto("http://web:5000/login");
+  await page.goto("http://localhost:8080/login");
 
-  await page.type("#username", "admin");
-  await page.type("#password", "adminpassword");
-  await page.click("button[type=submit]");
+  await page.type("#username", "Netanjahu");
+  await page.type("#password", "RipIran2026");
 
-  await page.waitForNavigation();
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: "domcontentloaded" }),
+    page.click("button[type=submit]")
+  ]);
 
-  // Öffne DM Chat
-  await page.goto("http://web:5000/dm/1");
+  await page.setCookie({
+    name: "flag",
+    value: "CTF{clickhereforepsteinfiles}",
+    domain: "localhost",
+    path: "/",
+    httpOnly: false
+  });
 
-  // Warte damit XSS Zeit hat auszuführen
+  await page.setCookie({
+    name: "hint",
+    value: "Check_your_DMs_for_HTML_execution",
+    domain: "localhost",
+    path: "/",
+    httpOnly: false
+  });
+
+while (true) {
+  await page.goto("http://localhost:8080/dm");
+
+  const conversationLinks = await page.$$eval(
+    "a.dm-item",
+    links => links.map(link => link.href)
+  );
+
+  console.log("Gefundene DMs:", conversationLinks);
+
+  for (const link of conversationLinks) {
+    console.log("Öffne:", link);
+
+    await page.goto(link, {
+      waitUntil: "domcontentloaded",
+      timeout: 60000
+    });
+    await page.waitForTimeout(3000);
+  }
+
   await page.waitForTimeout(60000);
+}
 
   await browser.close();
 })();

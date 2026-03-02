@@ -111,13 +111,11 @@ def dm_view(conversation_id):
             (conversation_id,)
         ).fetchall()
 
-        # unsichere script filterung
-        # konvertiere sqlite.Row -> dict, damit wir content verändern können
-        messages = [dict(m) for m in messages]  # sicherstellen, dass wir ein modifizierbares Dict haben
+        messages = [dict(m) for m in messages]
         for m in messages:
             if m['content']:
                 m['content'] = re.sub(
-                    r"<script.*?>.*?</script>",  # entfernt nur <script> Tags
+                    r"<script.*?>.*?</script>",
                     "",
                     m['content'],
                     flags=re.IGNORECASE | re.DOTALL

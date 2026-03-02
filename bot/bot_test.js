@@ -12,7 +12,6 @@ const puppeteer = require("puppeteer");
 
   const page = await browser.newPage();
 
-  // === Login als Opfer/Admin ===
   await page.goto("http://localhost:8080/login");
 
   await page.type("#username", "test_leon");
@@ -23,7 +22,6 @@ const puppeteer = require("puppeteer");
     page.waitForNavigation()
   ]);
 
-  // === Flag nur im Opfer-Cookie setzen ===
   await page.setCookie({
     name: "flag",
     value: "CTF{clickhereforepsteinfiles}",
@@ -32,19 +30,22 @@ const puppeteer = require("puppeteer");
     httpOnly: false
   });
 
-  // === DM öffnen (Stored XSS liegt dort bereits) ===
+  await page.setCookie({
+  name: "hint",
+  value: "Check_your_DMs_for_HTML_execution",
+  domain: "localhost",
+  path: "/",
+  httpOnly: false
+});
+
   const conversationId = 1;
   await page.goto(`http://localhost:8080/dm/${conversationId}`, {
   waitUntil: "domcontentloaded",
   timeout: 0
 });
 
-  // Zeit geben damit XSS ausführt
   await page.waitForTimeout(15000);
 
   console.log("Bot hat DM geöffnet.");
-
-  // Optional: Browser offen lassen
-  // await page.waitForTimeout(60000);
 
 })();

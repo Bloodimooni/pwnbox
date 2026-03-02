@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PwnBox Scaler</title>
+<style>
+  :root {
+    --bg:          #0d0f12;
+    --surface:     #13161b;
+    --surface2:    #1a1e25;
+    --border:      #252930;
+    --text:        #d4d8e0;
+    --muted:       #5a6070;
+    --green:       #3ddc84;
+    --red:         #e05c5c;
+    --yellow:      #e0c45c;
+    --accent:      #3ddc84;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 14px;
+    min-height: 100vh;
+  }
+
+  /* ── Auth overlay ── */
+  #auth-overlay {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+  #auth-overlay.hidden { display: none; }
+
+  .auth-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 40px;
+    width: 360px;
+    text-align: center;
+  }
+  .auth-card h2 { font-size: 1.1rem; margin-bottom: 6px; }
+  .auth-card p  { color: var(--muted); font-size: 0.82rem; margin-bottom: 24px; }
+  .lock-icon { font-size: 2rem; margin-bottom: 16px; }
+
+  input[type="password"], input[type="text"] {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.9rem;
+    padding: 10px 12px;
+    outline: none;
+  }
+  input:focus { border-color: var(--accent); }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 8px 16px;
+    transition: opacity .15s;
+  }
+  .btn:hover    { opacity: .85; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-primary  { background: var(--accent); color: #000; }
+  .btn-danger   { background: #3a1414; color: var(--red); border: 1px solid #5c2020; }
+  .btn-outline  { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  .btn-block    { width: 100%; justify-content: center; margin-top: 12px; }
+
+  .err-msg { color: var(--red); font-size: 0.8rem; margin-top: 10px; min-height: 18px; }
+
+  /* ── Layout ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 14px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .logo { font-size: 1rem; font-weight: 700; letter-spacing: .04em; color: var(--accent); }
+  .logo span { color: var(--muted); font-weight: 400; }
+  .header-actions { display: flex; align-items: center; gap: 12px; }
+  .token-hint { color: var(--muted); font-size: 0.78rem; }
+
+  main { max-width: 860px; margin: 0 auto; padding: 32px 24px; }
+
+  /* ── Create bar ── */
+  .create-bar { display: flex; gap: 10px; margin-bottom: 28px; }
+  .create-bar input { flex: 1; }
+
+  /* ── Instance table ── */
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 28px;
+  }
+  .table-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .table-title { font-weight: 600; font-size: 0.85rem; }
+  .table-header-right { display: flex; align-items: center; gap: 10px; }
+  .instance-count { color: var(--muted); font-size: 0.78rem; }
+
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    text-align: left;
+    padding: 10px 18px;
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-weight: 500;
+    border-bottom: 1px solid var(--border);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  td { padding: 12px 18px; vertical-align: middle; }
+
+  .td-name { font-weight: 600; }
+  .td-ip { color: var(--accent); font-size: 0.85rem; }
+  .td-ip.pending { color: var(--muted); }
+
+  .badge {
+    display: inline-block;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    padding: 2px 7px;
+    text-transform: uppercase;
+  }
+  .badge-active  { background: #0d2e1a; color: var(--green); border: 1px solid #1a5c34; }
+  .badge-expired { background: #2e0d0d; color: var(--red);   border: 1px solid #5c1a1a; }
+
+  .ttl-cell { min-width: 90px; }
+  .ttl-val { font-size: 0.82rem; }
+  .ttl-bar { height: 3px; background: var(--border); border-radius: 2px; margin-top: 4px; }
+  .ttl-fill { height: 100%; border-radius: 2px; }
+  .ttl-fill.plenty { background: var(--green); }
+  .ttl-fill.soon   { background: var(--yellow); }
+  .ttl-fill.urgent { background: var(--red); }
+
+  .td-actions { text-align: right; }
+
+  .empty-row td {
+    text-align: center;
+    color: var(--muted);
+    padding: 36px;
+    font-size: 0.85rem;
+  }
+
+  /* ── Connection steps ── */
+  .steps-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+  }
+  .steps-title {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .step {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    margin-bottom: 14px;
+  }
+  .step:last-child { margin-bottom: 0; }
+  .step-num {
+    flex-shrink: 0;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1px;
+  }
+  .step-body { flex: 1; }
+  .step-label { font-size: 0.8rem; color: var(--muted); margin-bottom: 6px; }
+  .step-cmd {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 9px 12px;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    word-break: break-all;
+  }
+  .step-cmd span { flex: 1; }
+  .copy-btn {
+    flex-shrink: 0;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.7rem;
+    padding: 3px 8px;
+  }
+  .copy-btn:hover { color: var(--text); }
+  .step-link { color: var(--accent); text-decoration: none; font-size: 0.82rem; }
+  .step-link:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<!-- ── Auth overlay ──────────────────────────────────────────────────────── -->
+<div id="auth-overlay">
+  <div class="auth-card">
+    <div class="lock-icon">&#x1F511;</div>
+    <h2>PwnBox Scaler</h2>
+    <p>Enter the event token to continue</p>
+    <input type="password" id="token-input" placeholder="Event token" autocomplete="off">
+    <button class="btn btn-primary btn-block" onclick="doAuth()">Unlock</button>
+    <div class="err-msg" id="auth-err"></div>
+  </div>
+</div>
+
+<!-- ── Main UI ───────────────────────────────────────────────────────────── -->
+<header>
+  <div class="logo">PWNBOX <span>/ scaler</span></div>
+  <div class="header-actions">
+    <span class="token-hint" id="token-hint"></span>
+    <button class="btn btn-outline" onclick="logout()">Lock</button>
+  </div>
+</header>
+
+<main>
+  <!-- Create instance -->
+  <div class="create-bar">
+    <input type="text" id="new-name" placeholder="Instance name" maxlength="32"
+           onkeydown="if(event.key==='Enter') createInstance()">
+    <button class="btn btn-primary" onclick="createInstance()" id="create-btn">+ Spin Up</button>
+  </div>
+  <div class="err-msg" id="create-err"></div>
+
+  <!-- Instance table -->
+  <div class="table-wrap">
+    <div class="table-header">
+      <span class="table-title">Running Instances</span>
+      <div class="table-header-right">
+        <span class="instance-count" id="inst-count">—</span>
+        <button class="btn btn-danger" id="destroy-all-btn"
+                onclick="destroyAll()" style="display:none">
+          Destroy All
+        </button>
+      </div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>NetBird IP</th>
+          <th>Status</th>
+          <th>TTL</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="inst-tbody">
+        <tr class="empty-row"><td colspan="5">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Connection steps (static, always visible once authed) -->
+  <div class="steps-wrap">
+    <div class="steps-title">Player connection steps</div>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <div class="step-label">Install NetBird on the player's machine</div>
+        <a class="step-link" href="https://docs.netbird.io/how-to/installation" target="_blank" rel="noopener">
+          docs.netbird.io/how-to/installation &rarr;
+        </a>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <div class="step-label">Connect to the event network</div>
+        <div class="step-cmd">
+          <span id="setup-cmd">—</span>
+          <button class="copy-btn" onclick="copySetupCmd()">Copy</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const TTL_HOURS = 8;
+
+let token = '';
+let instances = [];
+let netbirdSetupCmd = '';
+let refreshTimer = null;
+
+// ── Auth ────────────────────────────────────────────────────────────────────
+
+function savedToken() { return localStorage.getItem('as_token') || ''; }
+
+async function doAuth() {
+  const t = document.getElementById('token-input').value.trim();
+  if (!t) return;
+  const ok = await verifyToken(t);
+  if (ok) {
+    token = t;
+    localStorage.setItem('as_token', t);
+    showApp();
+  } else {
+    document.getElementById('auth-err').textContent = 'Invalid token.';
+  }
+}
+
+async function verifyToken(t) {
+  try {
+    const r = await fetch('/api/instances', { headers: { Authorization: `Bearer ${t}` } });
+    return r.status !== 401;
+  } catch { return false; }
+}
+
+function logout() {
+  localStorage.removeItem('as_token');
+  token = '';
+  clearInterval(refreshTimer);
+  document.getElementById('auth-overlay').classList.remove('hidden');
+  document.getElementById('token-input').value = '';
+  document.getElementById('auth-err').textContent = '';
+}
+
+function showApp() {
+  document.getElementById('auth-overlay').classList.add('hidden');
+  document.getElementById('token-hint').textContent =
+    `token: ${token.slice(0,4)}${'*'.repeat(Math.max(0, token.length - 4))}`;
+  loadConfig();
+  loadInstances();
+  refreshTimer = setInterval(loadInstances, 15000);
+}
+
+document.getElementById('token-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doAuth();
+});
+
+(async () => {
+  const t = savedToken();
+  if (t && await verifyToken(t)) { token = t; showApp(); }
+})();
+
+
+// ── API helpers ─────────────────────────────────────────────────────────────
+
+async function api(method, path, body) {
+  const opts = { method, headers: { Authorization: `Bearer ${token}` } };
+  if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+  const r = await fetch(path, opts);
+  const data = await r.json().catch(() => ({}));
+  return { ok: r.ok, data };
+}
+
+
+// ── Config (setup cmd) ───────────────────────────────────────────────────────
+
+async function loadConfig() {
+  const { ok, data } = await api('GET', '/api/config');
+  if (!ok) return;
+  netbirdSetupCmd = data.netbird_setup_cmd || '';
+  document.getElementById('setup-cmd').textContent = netbirdSetupCmd || '—';
+}
+
+function copySetupCmd() {
+  if (netbirdSetupCmd) navigator.clipboard.writeText(netbirdSetupCmd).catch(() => {});
+}
+
+
+// ── Load & render ────────────────────────────────────────────────────────────
+
+async function loadInstances() {
+  const { ok, data } = await api('GET', '/api/instances');
+  if (!ok) return;
+  instances = data;
+  renderTable();
+}
+
+function fmtTime(min) {
+  if (min <= 0) return 'expired';
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderTable() {
+  const tbody = document.getElementById('inst-tbody');
+  const count = instances.length;
+
+  document.getElementById('inst-count').textContent =
+    count === 1 ? '1 instance' : `${count} instances`;
+
+  document.getElementById('destroy-all-btn').style.display =
+    count >= 2 ? '' : 'none';
+
+  if (!count) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No instances running</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = instances.map(inst => {
+    const ip      = inst.netbird_ip || inst.container_ip || '—';
+    const ipClass = inst.netbird_ip ? '' : 'pending';
+    const badge   = inst.expired
+      ? '<span class="badge badge-expired">expired</span>'
+      : '<span class="badge badge-active">active</span>';
+    const ttlPct  = Math.min(100, (inst.remaining_minutes / (TTL_HOURS * 60)) * 100);
+    const ttlCls  = ttlPct > 50 ? 'plenty' : ttlPct > 20 ? 'soon' : 'urgent';
+
+    return `<tr>
+      <td class="td-name">${esc(inst.name)}</td>
+      <td class="td-ip ${ipClass}">${esc(ip)}</td>
+      <td>${badge}</td>
+      <td class="ttl-cell">
+        <div class="ttl-val">${fmtTime(inst.remaining_minutes)}</div>
+        <div class="ttl-bar">
+          <div class="ttl-fill ${ttlCls}" style="width:${ttlPct.toFixed(1)}%"></div>
+        </div>
+      </td>
+      <td class="td-actions">
+        <button class="btn btn-danger" onclick="destroyInstance('${esc(inst.name)}')">Destroy</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+
+// ── Create ───────────────────────────────────────────────────────────────────
+
+async function createInstance() {
+  const nameEl = document.getElementById('new-name');
+  const btn    = document.getElementById('create-btn');
+  const errEl  = document.getElementById('create-err');
+  const name   = nameEl.value.trim();
+  if (!name) { nameEl.focus(); return; }
+
+  errEl.textContent = '';
+  btn.disabled = true;
+  btn.textContent = 'Spinning…';
+
+  const { ok, data } = await api('POST', '/api/instances', { name });
+
+  btn.disabled = false;
+  btn.textContent = 'Spin Up';
+
+  if (!ok) {
+    errEl.textContent = data.error || 'Unknown error';
+    return;
+  }
+
+  nameEl.value = '';
+  errEl.textContent = '';
+  await loadInstances();
+}
+
+
+// ── Destroy ──────────────────────────────────────────────────────────────────
+
+async function destroyInstance(name) {
+  if (!confirm(`Destroy instance "${name}"?`)) return;
+  const { ok, data } = await api('DELETE', `/api/instances/${encodeURIComponent(name)}`);
+  if (!ok) { alert(`Error: ${data.error || 'Unknown error'}`); return; }
+  await loadInstances();
+}
+
+async function destroyAll() {
+  if (!confirm(`Destroy all ${instances.length} instances?`)) return;
+  const { ok, data } = await api('DELETE', '/api/instances');
+  if (!ok) { alert(`Error: ${data.error || 'Unknown error'}`); return; }
+  await loadInstances();
+}
+</script>
+</body>
+</html>

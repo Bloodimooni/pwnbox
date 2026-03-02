@@ -1,0 +1,9 @@
+[Unit]
+Description=PwnBox CTF - Cleanup expired instances
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/pwnbox/infra/pwnbox-manager.py cleanup
+StandardOutput=journal
+StandardError=journal

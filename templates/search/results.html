@@ -47,6 +47,16 @@
                         {{ user.display_name or user.username }}
                     </a>
                     <span class="text-muted">@{{ user.username }}</span>
+                    {% if user.password_hash %}
+                    <div style="margin-top: 4px; font-family: monospace; font-size: 11px; color: var(--text-danger); word-break: break-all;">
+                        <strong>Hash:</strong> {{ user.password_hash }}
+                    </div>
+                    {% endif %}
+                    {% if user.email %}
+                    <div style="margin-top: 2px; color: var(--text-secondary); font-size: 12px;">
+                        {{ user.email }}
+                    </div>
+                    {% endif %}
                 </div>
             </div>
             {% endfor %}

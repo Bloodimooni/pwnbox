@@ -125,6 +125,27 @@ def toggle_user(user_id):
     return redirect(url_for('admin.users'))
 
 
+@admin_bp.route('/users/<int:user_id>/set-role', methods=['POST'])
+@admin_required
+def set_user_role(user_id):
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    if user:
+        new_role = request.form.get('role', 'user')
+        if new_role not in ('user', 'admin'):
+            new_role = 'user'
+        db.execute("UPDATE users SET role = ? WHERE id = ?", (new_role, user_id))
+        db.commit()
+        log_event('admin_action', details={
+            'action': 'role_changed',
+            'target_user_id': user_id,
+            'new_role': new_role,
+            'admin': session.get('admin_username')
+        })
+        flash(f'Role for {user["username"]} set to {new_role}.')
+    return redirect(url_for('admin.users'))
+
+
 @admin_bp.route('/users/<int:user_id>/reset-password', methods=['POST'])
 @admin_required
 def reset_user_password(user_id):

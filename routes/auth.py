@@ -61,9 +61,7 @@ def login():
             session['display_name'] = user['display_name'] or user['username']
             session['avatar_filename'] = user['avatar_filename']
 
-            #Leon
             response = make_response(redirect(url_for("index")))
-
 
             db.execute("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?", (user['id'],))
             db.commit()

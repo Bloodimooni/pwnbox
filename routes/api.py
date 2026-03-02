@@ -814,3 +814,36 @@ def crypto_encrypt():
             "algorithm": "base64-placeholder"
         }
     })
+
+@api_bp.route('/debug', methods=['POST'])
+def debug_run():
+    data = request.get_json()
+    if not data or 'script' not in data:
+        return jsonify({"error": "Script name required"}), 400
+
+    script_name = data['script']
+    base_dir = '/home/jamie/pwnbox/scripts'
+    script_path = os.path.join(base_dir, script_name)
+
+    if not os.path.isfile(script_path):
+        return jsonify({"error": "Script not found"}), 404
+
+    try:
+        import subprocess
+        result = subprocess.run(
+            ['bash', script_path],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        return jsonify({
+            "data": {
+                "stdout": result.stdout,
+                "stderr": result.stderr,
+                "returncode": result.returncode
+            }
+        })
+    except subprocess.TimeoutExpired:
+        return jsonify({"error": "Script execution timed out"}), 408
+    except Exception as e:
+        return jsonify({"error": f"Execution failed: {str(e)}"}), 500

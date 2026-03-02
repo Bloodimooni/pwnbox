@@ -220,44 +220,11 @@ PYTHON_SCRIPT
     cat > "$CHALLENGE_DIR/README.md" <<'READMEEOF'
 # CTF Challenge - Exposed Git Repository
 
-## Description
-This is an exposed Git repository that was accidentally published to the web server. 
-The repository contains sensitive information in its commit history.
-
-## Challenge
-Find the hidden flag in the Git commit history!
-
-## How to solve
-
-### Option 1: Download and examine locally
-```bash
-wget -r http://target/challenge/
-cd challenge
-git log --oneline
-git show <commit-hash>
-```
-
-### Option 2: Clone the repository
-```bash
-git clone http://target/challenge/ ctf-challenge
-cd ctf-challenge
-git log
-git show HEAD~1
-```
-
-### Option 3: Examine online
-```bash
-git ls-remote http://target/challenge/
-```
-
-## Hints
-- Use `git log` to see commit messages
-- Use `git show` to view file contents at specific commits
-- The flag is hidden in an earlier commit that was "removed"
-- Try examining the parent commits
+## Beschreibung
+Exposed Git Repository Challenge:Git-Repository mit verstecktem Flag in der Commit-Historie.
 
 ## Flag Format
-The flag is in the format: `FLAG{...}`
+Die Flagge ist im Format: `FLAG{...}`
 
 READMEEOF
 

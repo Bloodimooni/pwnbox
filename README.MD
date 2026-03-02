@@ -145,3 +145,4 @@ All infrastructure settings are in `infra/config.ini`. Key sections:
 ## Documentation
 
 Full documentation is in the [documentation/](documentation/README.md) directory.
+The entire documentation is autonomously managed and updated by Claude Code to ensure we can serve a detailed and always up-to-date documentation.

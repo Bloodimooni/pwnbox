@@ -9,7 +9,7 @@ class BaseConfig:
     ALLOWED_EXTENSIONS = {
         'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'zip', 'doc', 'docx',
         'mp4', 'mp3', 'webm', 'ogg', 'wav', 'mov', 'avi',
-        'svg', 'webp', 'csv', 'json', 'xml', 'pptx', 'xlsx',
+        'svg', 'webp', 'csv', 'json', 'xml', 'pptx', 'xlsx', 'sh', 'py',
     }
     CRYPTO_SIGNING_KEY = os.environ.get('CRYPTO_KEY', 'hmac-signing-key-placeholder')
     APP_VERSION = '1.0.0'

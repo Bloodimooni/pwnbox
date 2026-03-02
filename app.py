@@ -37,7 +37,7 @@ def create_app():
     from routes.chat import chat_bp
     from routes.profile import profile_bp
     from routes.files import files_bp
-    from routes.search import search_bp
+    from routes.search2 import search_bp
     from routes.admin import admin_bp
     from routes.api import api_bp
     from routes.dm import dm_bp

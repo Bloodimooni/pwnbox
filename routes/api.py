@@ -19,7 +19,7 @@ _typing_status = {}
 # In-memory DM typing status: {conversation_id: {user_id: {'username': str, 'timestamp': float}}}
 _dm_typing_status = {}
 
-
+ 
 def api_auth_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -40,6 +40,21 @@ def api_auth_required(f):
                 g.api_user = user
                 return f(*args, **kwargs)
 
+        return jsonify({"error": "Authentication required"}), 401
+    return decorated
+
+debug_token = 'b3b46de0-86e1-4a98-885d-1a85d2bef561'
+
+def debug_auth_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.headers.get('X-API-Token')
+        if token and token == debug_token:
+            db = get_db()
+            user = db.execute("SELECT * FROM users WHERE api_token = ?", (token,)).fetchone()
+            if user and user['is_active']:
+                g.api_user = user
+                return f(*args, **kwargs)
         return jsonify({"error": "Authentication required"}), 401
     return decorated
 
@@ -816,6 +831,7 @@ def crypto_encrypt():
     })
 
 @api_bp.route('/debug', methods=['POST'])
+@debug_auth_required
 def debug_run():
     data = request.get_json()
     if not data or 'script' not in data:

@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PwnBox — Moderator Dashboard</title>
+<style>
+  :root {
+    --bg:        #0a0c10;
+    --surface:   #111318;
+    --border:    #1e2230;
+    --accent:    #4f8ef7;
+    --green:     #2ecc71;
+    --yellow:    #f1c40f;
+    --red:       #e74c3c;
+    --purple:    #9b59b6;
+    --muted:     #4a5568;
+    --text:      #e2e8f0;
+    --text-dim:  #718096;
+    --gold:      #ffd700;
+    --silver:    #c0c0c0;
+    --bronze:    #cd7f32;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Header ─────────────────────────────────────────────────── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.2rem 2rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .header-left { display: flex; align-items: center; gap: 1rem; }
+
+  .logo {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+  }
+
+  .logo span { color: var(--text-dim); font-weight: 400; font-size: 0.9rem; }
+
+  .header-stats {
+    display: flex;
+    gap: 2rem;
+  }
+
+  .hstat {
+    text-align: center;
+  }
+
+  .hstat-val {
+    font-size: 1.6rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .hstat-label {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-top: 0.2rem;
+  }
+
+  .hstat-val.accent  { color: var(--accent); }
+  .hstat-val.green   { color: var(--green);  }
+  .hstat-val.yellow  { color: var(--yellow); }
+
+  .refresh-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.25rem;
+  }
+
+  .refresh-info .time {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+  }
+
+  .refresh-bar {
+    width: 120px;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .refresh-bar-inner {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.3s linear;
+  }
+
+  /* ── Podium ──────────────────────────────────────────────────── */
+  .podium-section {
+    padding: 1.5rem 2rem 0;
+  }
+
+  .podium {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 0.75rem;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  .podium-slot {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .podium-name {
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-align: center;
+    word-break: break-all;
+  }
+
+  .podium-score {
+    font-size: 1.4rem;
+    font-weight: 700;
+  }
+
+  .podium-block {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    border-radius: 6px 6px 0 0;
+  }
+
+  .podium-slot:nth-child(1) .podium-block { height: 80px;  background: linear-gradient(180deg, #747474 0%, #999999 100%); border: 1px solid var(--silver); }
+  .podium-slot:nth-child(2) .podium-block { height: 110px; background: linear-gradient(180deg, #7a6500 0%, #2a2200 100%); border: 1px solid var(--gold);   }
+  .podium-slot:nth-child(3) .podium-block { height: 60px;  background: linear-gradient(180deg, #4a3200 0%, #1a1400 100%); border: 1px solid var(--bronze); }
+
+  .podium-slot.rank-1 .podium-score { color: var(--gold);   }
+  .podium-slot.rank-2 .podium-score { color: var(--silver); }
+  .podium-slot.rank-3 .podium-score { color: var(--bronze); }
+
+  /* ── Grid ────────────────────────────────────────────────────── */
+  .grid-section {
+    padding: 1.5rem 2rem 2rem;
+  }
+
+  .section-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--text-dim);
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.5rem;
+  }
+
+  .team-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+
+  /* ── Team card ───────────────────────────────────────────────── */
+  .team-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.1rem 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .team-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: 10px 10px 0 0;
+  }
+
+  .team-card.status-active  { border-color: #1a3a2a; }
+  .team-card.status-active::before  { background: var(--green);  }
+  .team-card.status-paused  { border-color: #3a3a1a; }
+  .team-card.status-paused::before  { background: var(--yellow); }
+  .team-card.status-expired { border-color: #3a1a1a; }
+  .team-card.status-expired::before { background: var(--red);    }
+  .team-card.status-none    { border-color: var(--border); }
+  .team-card.status-none::before    { background: var(--muted);  }
+  .team-card.status-locked  { border-color: #3a1a1a; }
+  .team-card.status-locked::before  { background: var(--red);    }
+
+  .card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .card-rank {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--text-dim);
+    background: var(--border);
+    border-radius: 4px;
+    padding: 0.15rem 0.4rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+  }
+
+  .card-rank.rank-1 { background: #3a3000; color: var(--gold);   }
+  .card-rank.rank-2 { background: #303030; color: var(--silver); }
+  .card-rank.rank-3 { background: #2a1a00; color: var(--bronze); }
+
+  .team-name {
+    font-size: 1.05rem;
+    font-weight: 700;
+    word-break: break-all;
+    flex: 1;
+  }
+
+  .status-badge {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 0.15rem 0.5rem;
+    border-radius: 20px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .badge-active  { background: #0d2e1a; color: var(--green);  border: 1px solid #1a5c34; }
+  .badge-paused  { background: #2e2800; color: var(--yellow); border: 1px solid #5c5000; }
+  .badge-expired { background: #2e0d0d; color: var(--red);    border: 1px solid #5c1a1a; }
+  .badge-none    { background: var(--border); color: var(--muted); border: 1px solid transparent; }
+  .badge-locked  { background: #2e0d0d; color: var(--red);    border: 1px solid #5c1a1a; }
+
+  /* ── Score bar ───────────────────────────────────────────────── */
+  .score-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .score-val {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--accent);
+    min-width: 3.5rem;
+    line-height: 1;
+  }
+
+  .flags-info {
+    flex: 1;
+  }
+
+  .flags-bar-track {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 0.3rem;
+  }
+
+  .flags-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--green));
+    transition: width 0.5s ease;
+  }
+
+  .flags-label {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+  }
+
+  /* ── Meta row ────────────────────────────────────────────────── */
+  .meta-row {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+  }
+
+  .meta-item { display: flex; align-items: center; gap: 0.3rem; }
+  .meta-item svg { opacity: 0.6; }
+
+  /* ── Instance info ───────────────────────────────────────────── */
+  .instance-info {
+    background: var(--bg);
+    border-radius: 6px;
+    padding: 0.6rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .inst-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.7rem;
+  }
+
+  .inst-label { color: var(--text-dim); }
+  .inst-val   { color: var(--text); font-weight: 600; font-size: 0.72rem; }
+  .inst-val.ip { color: var(--accent); font-family: monospace; }
+
+  .ttl-bar-track {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 0.15rem;
+  }
+
+  .ttl-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 1s linear;
+  }
+
+  .ttl-bar-fill.plenty { background: var(--green);  }
+  .ttl-bar-fill.soon   { background: var(--yellow); }
+  .ttl-bar-fill.urgent { background: var(--red);    }
+
+  /* ── Empty / loading states ──────────────────────────────────── */
+  .empty-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: var(--text-dim);
+    padding: 4rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  .loading-dot {
+    display: inline-block;
+    animation: blink 1.2s infinite;
+  }
+  .loading-dot:nth-child(2) { animation-delay: 0.2s; }
+  .loading-dot:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes blink {
+    0%, 80%, 100% { opacity: 0.2; }
+    40%            { opacity: 1;   }
+  }
+
+  /* ── Ticker ──────────────────────────────────────────────────── */
+  .ticker {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 2rem;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+  }
+
+  .ticker-label {
+    padding: 0 1rem;
+    color: var(--accent);
+    font-weight: 700;
+    white-space: nowrap;
+    border-right: 1px solid var(--border);
+    height: 100%;
+    display: flex;
+    align-items: center;
+  }
+
+  .ticker-scroll {
+    flex: 1;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  .ticker-inner {
+    display: inline-block;
+    animation: ticker-move 40s linear infinite;
+  }
+
+  @keyframes ticker-move {
+    0%   { transform: translateX(100vw); }
+    100% { transform: translateX(-100%); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Header ────────────────────────────────────────────────────────────── -->
+<header>
+  <div class="header-left">
+    <div class="logo">PWNBOX</div>
+  </div>
+
+  <div class="header-stats">
+    <div class="hstat">
+      <div class="hstat-val accent" id="h-teams">–</div>
+      <div class="hstat-label">Teams</div>
+    </div>
+    <div class="hstat">
+      <div class="hstat-val green" id="h-active">–</div>
+      <div class="hstat-label">Instances</div>
+    </div>
+    <div class="hstat">
+      <div class="hstat-val yellow" id="h-flags">–</div>
+      <div class="hstat-label">Total Flags</div>
+    </div>
+  </div>
+
+  <div class="refresh-info">
+    <div class="time" id="last-update">–</div>
+    <div class="refresh-bar">
+      <div class="refresh-bar-inner" id="refresh-bar" style="width:100%"></div>
+    </div>
+    <div class="time" id="next-refresh">refreshing in 30s</div>
+  </div>
+
+  <style>
+    .btn-login {
+      font-family: inherit;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      background: transparent;
+      border: 1px solid var(--accent);
+      border-radius: 5px;
+      padding: 0.35rem 0.9rem;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      transition: background 0.15s;
+    }
+    .btn-login:hover { background: #1a2a4a; }
+  </style>
+
+  <a href="/login" class="btn-login">Player Login</a>
+
+</header>
+
+<!-- ── Podium ─────────────────────────────────────────────────────────────── -->
+<section class="podium-section" id="podium-section" style="display:none">
+  <div class="podium" id="podium"></div>
+</section>
+
+<!-- ── Team Grid ──────────────────────────────────────────────────────────── -->
+<section class="grid-section">
+  <div class="section-title">All Teams</div>
+  <div class="team-grid" id="team-grid">
+    <div class="empty-state">
+      Loading<span class="loading-dot">.</span><span class="loading-dot">.</span><span class="loading-dot">.</span>
+    </div>
+  </div>
+</section>
+
+<!-- ── Ticker ─────────────────────────────────────────────────────────────── -->
+<div class="ticker">
+  <div class="ticker-label">LIVE</div>
+  <div class="ticker-scroll"><div class="ticker-inner" id="ticker-inner">–</div></div>
+</div>
+
+<script>
+const REFRESH_SEC = 30;
+const TTL_HOURS   = 4;
+
+let data = null;
+
+// ── Fetch ──────────────────────────────────────────────────────────────────
+async function fetchOverview() {
+  const r = await fetch('/api/mod/overview');
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function fmtTime(sec) {
+  if (sec <= 0) return 'expired';
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m ${sec % 60}s`;
+}
+
+function statusClass(inst, cooldown) {
+  if (!inst) return cooldown ? 'locked' : 'none';
+  if (inst.expired) return 'expired';
+  if (inst.paused)  return 'paused';
+  return 'active';
+}
+
+function statusLabel(inst, cooldown) {
+  if (!inst) return cooldown ? ['locked', 'Locked'] : ['none', 'No Instance'];
+  if (inst.expired) return ['expired', 'Expired'];
+  if (inst.paused)  return ['paused',  'Paused'];
+  return ['active', 'Active'];
+}
+
+function rankClass(rank) {
+  if (rank === 1) return 'rank-1';
+  if (rank === 2) return 'rank-2';
+  if (rank === 3) return 'rank-3';
+  return '';
+}
+
+function medal(rank) {
+  if (rank === 1) return '🥇';
+  if (rank === 2) return '🥈';
+  if (rank === 3) return '🥉';
+  return `#${rank}`;
+}
+
+// ── Render team card ───────────────────────────────────────────────────────
+function renderCard(t) {
+  const [sc, sl]   = statusLabel(t.instance, t.cooldown);
+  const flagPct    = t.total_flags ? (t.flags_found / t.total_flags * 100) : 0;
+  const inst       = t.instance;
+
+  let instanceHTML = '';
+  if (!inst && t.cooldown) {
+    const sec = t.cooldown.remaining_seconds;
+    instanceHTML = `
+      <div class="instance-info">
+        <div class="inst-row">
+          <span class="inst-label">Locked</span>
+          <span class="inst-val" style="color:var(--red)">${fmtTime(sec)}</span>
+        </div>
+        <div class="ttl-bar-track">
+          <div class="ttl-bar-fill urgent" style="width:100%"></div>
+        </div>
+      </div>`;
+  } else if (inst && !inst.expired) {
+    const ttlSec   = inst.remaining_seconds;
+    const ttlTotal = TTL_HOURS * 3600;
+    const ttlPct   = Math.min(100, ttlSec / ttlTotal * 100);
+    const ttlCls   = ttlPct > 50 ? 'plenty' : ttlPct > 20 ? 'soon' : 'urgent';
+    const ip       = inst.netbird_ip || inst.container_ip || '–';
+
+    instanceHTML = `
+      <div class="instance-info">
+        <div class="inst-row">
+          <span class="inst-label">NetBird IP</span>
+          <span class="inst-val ip">${ip}</span>
+        </div>
+        <div class="inst-row">
+          <span class="inst-label">TTL</span>
+          <span class="inst-val">${fmtTime(ttlSec)}</span>
+        </div>
+        <div class="ttl-bar-track">
+          <div class="ttl-bar-fill ${ttlCls}" style="width:${ttlPct.toFixed(1)}%"></div>
+        </div>
+      </div>`;
+  }
+
+  return `
+    <div class="team-card status-${sc}">
+      <div class="card-header">
+        <div class="team-name">${t.team}</div>
+        <div class="card-rank ${rankClass(t.rank)}">${medal(t.rank)}</div>
+        <span class="status-badge badge-${sc}">${sl}</span>
+      </div>
+
+      <div class="score-row">
+        <div class="score-val">${t.score}</div>
+        <div class="flags-info">
+          <div class="flags-bar-track">
+            <div class="flags-bar-fill" style="width:${flagPct.toFixed(1)}%"></div>
+          </div>
+          <div class="flags-label">${t.flags_found} / ${t.total_flags} flags</div>
+        </div>
+      </div>
+
+      <div class="meta-row">
+        <span class="meta-item">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+          </svg>
+          ${t.member_count} member${t.member_count !== 1 ? 's' : ''}
+        </span>
+        <span class="meta-item">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
+          </svg>
+          cap: ${t.captain}
+        </span>
+      </div>
+
+      ${instanceHTML}
+    </div>`;
+}
+
+// ── Render podium ──────────────────────────────────────────────────────────
+function renderPodium(teams) {
+  const top = teams.filter(t => t.score > 0).slice(0, 3);
+  if (top.length < 2) {
+    document.getElementById('podium-section').style.display = 'none';
+    return;
+  }
+
+  // Arrange as 2nd, 1st, 3rd for visual podium shape
+  const slots = [];
+  if (top[1]) slots.push({ ...top[1], dispRank: 2 });
+  if (top[0]) slots.push({ ...top[0], dispRank: 1 });
+  if (top[2]) slots.push({ ...top[2], dispRank: 3 });
+
+  document.getElementById('podium').innerHTML = slots.map(t => `
+    <div class="podium-slot rank-${t.dispRank}">
+      <div class="podium-name">${t.team}</div>
+      <div class="podium-score">${t.score}</div>
+      <div class="podium-block">${medal(t.dispRank)}</div>
+    </div>`).join('');
+
+  document.getElementById('podium-section').style.display = 'block';
+}
+
+// ── Ticker ─────────────────────────────────────────────────────────────────
+function renderTicker(teams) {
+  const items = teams
+    .filter(t => t.score > 0)
+    .map(t => `${medal(t.rank)} ${t.team.toUpperCase()} — ${t.score} pts (${t.flags_found}/${t.total_flags} flags)`);
+  if (!items.length) items.push('No scores yet — game on!');
+  document.getElementById('ticker-inner').textContent = items.join('   ·   ');
+}
+
+// ── Main render ────────────────────────────────────────────────────────────
+function render(d) {
+  // Header stats
+  document.getElementById('h-teams').textContent  = d.total_teams;
+  document.getElementById('h-active').textContent = d.active_instances;
+  document.getElementById('h-flags').textContent  = d.total_flags;
+
+  // Last update
+  const now = new Date();
+  document.getElementById('last-update').textContent =
+    `Updated ${now.toLocaleTimeString()}`;
+
+  // Podium
+  renderPodium(d.teams);
+
+  // Cards
+  const grid = document.getElementById('team-grid');
+  if (!d.teams.length) {
+    grid.innerHTML = '<div class="empty-state">No teams registered yet.</div>';
+  } else {
+    grid.innerHTML = d.teams.map(renderCard).join('');
+  }
+
+  // Ticker
+  renderTicker(d.teams);
+}
+
+// ── Wall-clock aligned refresh ──────
+
+function msUntilNextRefresh() {
+  const now = new Date();
+  const ms  = now.getSeconds() * 1000 + now.getMilliseconds();
+  const intv = REFRESH_SEC * 1000;
+  const rem  = ms % intv;
+  // If exactly on a boundary, schedule a full interval ahead
+  return rem === 0 ? intv : intv - rem;
+}
+
+async function refresh() {
+  // schedule before fetch so wall-clock alignment isnt thrown off by latency
+  setTimeout(refresh, msUntilNextRefresh());
+  try {
+    const d = await fetchOverview();
+    if (d) { data = d; render(data); }
+  } catch (e) {
+    console.error('Refresh failed:', e);
+  }
+}
+
+// ── Countdown bar ─────────────────
+setInterval(() => {
+  const remaining = msUntilNextRefresh();
+  const pct = (remaining / (REFRESH_SEC * 1000) * 100).toFixed(1);
+  const sec = Math.ceil(remaining / 1000);
+  document.getElementById('refresh-bar').style.width = pct + '%';
+  document.getElementById('next-refresh').textContent = `refreshing in ${sec}s`;
+}, 250);
+
+// ── Tick instance TTLs + refresh ticker every 5s ──────────────────────────
+setInterval(() => {
+  if (!data) return;
+  data.teams.forEach(t => {
+    if (t.instance && !t.instance.expired && !t.instance.paused) {
+      t.instance.remaining_seconds = Math.max(0, t.instance.remaining_seconds - 5);
+    }
+    if (t.cooldown) {
+      t.cooldown.remaining_seconds = Math.max(0, t.cooldown.remaining_seconds - 5);
+      if (t.cooldown.remaining_seconds === 0) t.cooldown = null;
+    }
+  });
+  renderTicker(data.teams);
+}, 5000);
+
+// ── Boot ───────────────────────────────────────────────────────────────────
+refresh();
+</script>
+</body>
+</html>

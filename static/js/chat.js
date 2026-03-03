@@ -7,6 +7,9 @@
     const channelId = container.dataset.channelId;
     if (!channelId) return;
 
+    const currentUserId = parseInt(container.dataset.userId) || 0;
+    const userRole = container.dataset.userRole || 'user';
+
     const messagesDiv = document.getElementById('chat-messages');
     const input = document.getElementById('message-input');
     const fileInput = document.getElementById('file-input');
@@ -127,6 +130,52 @@
         if (previewName) previewName.textContent = '';
     };
 
+    // Delete a message
+    window.deleteMessage = function (messageId) {
+        if (!confirm('Delete this message?')) return;
+        fetch(`/api/v1/channels/${channelId}/messages/${messageId}`, { method: 'DELETE' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'ok') {
+                    const msgEl = messagesDiv.querySelector(`[data-message-id="${messageId}"]`);
+                    if (msgEl) {
+                        msgEl.classList.add('message-is-deleted');
+                        const body = msgEl.querySelector('.message-body');
+                        const header = body.querySelector('.message-header');
+                        const delBtn = header.querySelector('.btn-delete-msg');
+                        if (delBtn) delBtn.remove();
+                        // Remove content and attachment, replace with deleted text
+                        const content = body.querySelector('.message-content');
+                        const attachment = body.querySelector('.message-attachment');
+                        if (content) content.remove();
+                        if (attachment) attachment.remove();
+                        const deleted = document.createElement('div');
+                        deleted.className = 'message-content message-deleted';
+                        deleted.textContent = '[message deleted]';
+                        body.appendChild(deleted);
+                    }
+                } else {
+                    alert(data.error || 'Failed to delete message');
+                }
+            })
+            .catch(() => alert('Failed to delete message'));
+    };
+
+    // Delete a channel (admin only)
+    window.deleteChannel = function (chId, chName) {
+        if (!confirm(`Delete channel #${chName} and all its messages? This cannot be undone.`)) return;
+        fetch(`/api/v1/channels/${chId}`, { method: 'DELETE' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'ok') {
+                    window.location.href = '/chat/';
+                } else {
+                    alert(data.error || 'Failed to delete channel');
+                }
+            })
+            .catch(() => alert('Failed to delete channel'));
+    };
+
     function fetchNewMessages() {
         fetch(`/api/v1/channels/${channelId}/messages?since=${lastMessageId}`)
             .then(r => r.json())
@@ -240,20 +289,27 @@
 
     function appendMessage(msg) {
         const div = document.createElement('div');
-        div.className = 'message';
+        div.className = 'message' + (msg.is_deleted ? ' message-is-deleted' : '');
         div.dataset.messageId = msg.id;
+        div.dataset.userId = msg.user_id || '';
 
         const displayName = msg.display_name || msg.username || 'Unknown';
         const initial = displayName.charAt(0).toUpperCase();
 
         let contentHtml = '';
-        if (msg.content) {
-            contentHtml = `<div class="message-content">${escapeHtml(msg.content)}</div>`;
-        }
-
         let attachmentHtml = '';
-        if (msg.attachment_id) {
-            attachmentHtml = `<div class="message-attachment"><img src="/files/view/${msg.attachment_id}" alt="attachment" loading="lazy"></div>`;
+        let deleteBtnHtml = '';
+
+        if (msg.is_deleted) {
+            contentHtml = '<div class="message-content message-deleted">[message deleted]</div>';
+        } else {
+            if (msg.content) {
+                contentHtml = `<div class="message-content">${escapeHtml(msg.content)}</div>`;
+            }
+            if (msg.attachment_id) {
+                attachmentHtml = `<div class="message-attachment"><img src="/files/view/${msg.attachment_id}" alt="attachment" loading="lazy"></div>`;
+            }
+            deleteBtnHtml = `<button class="btn-delete-msg" onclick="deleteMessage(${msg.id})" title="Delete message">&#128465;</button>`;
         }
 
         let avatarHtml;
@@ -269,6 +325,7 @@
                 <div class="message-header">
                     <span class="message-author">${escapeHtml(displayName)}</span>
                     <span class="message-time">${escapeHtml(msg.created_at || '')}</span>
+                    ${deleteBtnHtml}
                 </div>
                 ${contentHtml}
                 ${attachmentHtml}

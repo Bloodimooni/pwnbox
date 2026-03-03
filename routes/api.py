@@ -130,7 +130,7 @@ def get_messages(channel_id):
 
     messages = db.execute(
         """SELECT m.id, m.content, m.created_at, m.is_encrypted, m.signature,
-                  m.attachment_id,
+                  m.attachment_id, m.is_deleted,
                   u.id as user_id, u.username, u.display_name, u.avatar_filename,
                   f.filename as attachment_filename, f.mime_type as attachment_mime_type
            FROM messages m
@@ -141,9 +141,17 @@ def get_messages(channel_id):
         (channel_id, since)
     ).fetchall()
 
-    return jsonify({
-        "data": [dict(msg) for msg in messages]
-    })
+    result = []
+    for msg in messages:
+        d = dict(msg)
+        if d.get('is_deleted'):
+            d['content'] = ''
+            d['attachment_id'] = None
+            d['attachment_filename'] = None
+            d['attachment_mime_type'] = None
+        result.append(d)
+
+    return jsonify({"data": result})
 
 
 @api_bp.route('/channels/<int:channel_id>/messages', methods=['POST'])
@@ -463,6 +471,7 @@ def get_dm_messages(conversation_id):
 
     messages = db.execute(
         """SELECT dm.id, dm.content, dm.created_at, dm.attachment_id, dm.sender_id,
+                  dm.is_deleted,
                   u.username, u.display_name, u.avatar_filename,
                   f.filename as attachment_filename, f.mime_type as attachment_mime_type
            FROM dm_messages dm
@@ -473,7 +482,17 @@ def get_dm_messages(conversation_id):
         (conversation_id, since)
     ).fetchall()
 
-    return jsonify({"data": [dict(msg) for msg in messages]})
+    result = []
+    for msg in messages:
+        d = dict(msg)
+        if d.get('is_deleted'):
+            d['content'] = ''
+            d['attachment_id'] = None
+            d['attachment_filename'] = None
+            d['attachment_mime_type'] = None
+        result.append(d)
+
+    return jsonify({"data": result})
 
 
 @api_bp.route('/dm/<int:conversation_id>/messages', methods=['POST'])
@@ -602,6 +621,153 @@ def get_dm_typing(conversation_id):
         typers = [info['username'] for uid, info in _dm_typing_status[conversation_id].items()
                   if uid != current_user_id]
     return jsonify({"data": typers})
+
+
+# --- Deletion endpoints ---
+
+@api_bp.route('/channels/<int:channel_id>/messages/<int:message_id>', methods=['DELETE'])
+@api_auth_required
+def delete_message(channel_id, message_id):
+    db = get_db()
+    msg = db.execute(
+        "SELECT * FROM messages WHERE id = ? AND channel_id = ?",
+        (message_id, channel_id)
+    ).fetchone()
+    if not msg:
+        return jsonify({"error": "Message not found"}), 404
+
+    user = g.api_user
+    is_admin = user['role'] == 'admin'
+    is_owner = msg['user_id'] == user['id']
+
+    if not is_admin:
+        if not is_owner:
+            return jsonify({"error": "Not your message"}), 403
+        # Check 10-minute window
+        from datetime import datetime, timedelta
+        try:
+            created = datetime.strptime(msg['created_at'], '%Y-%m-%d %H:%M:%S')
+        except (ValueError, TypeError):
+            created = datetime.min
+        if datetime.utcnow() - created > timedelta(minutes=10):
+            return jsonify({"error": "Message is older than 10 minutes"}), 403
+
+    db.execute(
+        "UPDATE messages SET is_deleted = 1, content = '' WHERE id = ?",
+        (message_id,)
+    )
+    db.commit()
+    return jsonify({"status": "ok"})
+
+
+@api_bp.route('/channels/<int:channel_id>', methods=['DELETE'])
+@api_auth_required
+def delete_channel(channel_id):
+    if g.api_user['role'] != 'admin':
+        return jsonify({"error": "Admin role required"}), 403
+
+    db = get_db()
+    channel = db.execute("SELECT * FROM channels WHERE id = ?", (channel_id,)).fetchone()
+    if not channel:
+        return jsonify({"error": "Channel not found"}), 404
+
+    db.execute("DELETE FROM messages WHERE channel_id = ?", (channel_id,))
+    db.execute("DELETE FROM channels WHERE id = ?", (channel_id,))
+    db.commit()
+    return jsonify({"status": "ok"})
+
+
+@api_bp.route('/dm/<int:conversation_id>/messages/<int:message_id>', methods=['DELETE'])
+@api_auth_required
+def delete_dm_message(conversation_id, message_id):
+    db = get_db()
+    current_user_id = g.api_user['id']
+
+    conv = db.execute(
+        "SELECT * FROM dm_conversations WHERE id = ? AND (user1_id = ? OR user2_id = ?)",
+        (conversation_id, current_user_id, current_user_id)
+    ).fetchone()
+    if not conv:
+        return jsonify({"error": "Conversation not found"}), 404
+
+    msg = db.execute(
+        "SELECT * FROM dm_messages WHERE id = ? AND conversation_id = ?",
+        (message_id, conversation_id)
+    ).fetchone()
+    if not msg:
+        return jsonify({"error": "Message not found"}), 404
+
+    is_admin = g.api_user['role'] == 'admin'
+    is_owner = msg['sender_id'] == current_user_id
+
+    if not is_admin:
+        if not is_owner:
+            return jsonify({"error": "Not your message"}), 403
+        from datetime import datetime, timedelta
+        try:
+            created = datetime.strptime(msg['created_at'], '%Y-%m-%d %H:%M:%S')
+        except (ValueError, TypeError):
+            created = datetime.min
+        if datetime.utcnow() - created > timedelta(minutes=10):
+            return jsonify({"error": "Message is older than 10 minutes"}), 403
+
+    db.execute(
+        "UPDATE dm_messages SET is_deleted = 1, content = '' WHERE id = ?",
+        (message_id,)
+    )
+    db.commit()
+    return jsonify({"status": "ok"})
+
+
+@api_bp.route('/dm/<int:conversation_id>/request-delete', methods=['POST'])
+@api_auth_required
+def request_delete_conversation(conversation_id):
+    db = get_db()
+    current_user_id = g.api_user['id']
+
+    conv = db.execute(
+        "SELECT * FROM dm_conversations WHERE id = ? AND (user1_id = ? OR user2_id = ?)",
+        (conversation_id, current_user_id, current_user_id)
+    ).fetchone()
+    if not conv:
+        return jsonify({"error": "Conversation not found"}), 404
+
+    if current_user_id == conv['user1_id']:
+        db.execute("UPDATE dm_conversations SET user1_delete_requested = 1 WHERE id = ?", (conversation_id,))
+    else:
+        db.execute("UPDATE dm_conversations SET user2_delete_requested = 1 WHERE id = ?", (conversation_id,))
+    db.commit()
+
+    # Re-fetch to check if both agreed
+    conv = db.execute("SELECT * FROM dm_conversations WHERE id = ?", (conversation_id,)).fetchone()
+    if conv['user1_delete_requested'] and conv['user2_delete_requested']:
+        db.execute("DELETE FROM dm_messages WHERE conversation_id = ?", (conversation_id,))
+        db.execute("DELETE FROM dm_conversations WHERE id = ?", (conversation_id,))
+        db.commit()
+        return jsonify({"status": "ok", "deleted": True})
+
+    return jsonify({"status": "ok", "deleted": False})
+
+
+@api_bp.route('/dm/<int:conversation_id>/cancel-delete', methods=['POST'])
+@api_auth_required
+def cancel_delete_conversation(conversation_id):
+    db = get_db()
+    current_user_id = g.api_user['id']
+
+    conv = db.execute(
+        "SELECT * FROM dm_conversations WHERE id = ? AND (user1_id = ? OR user2_id = ?)",
+        (conversation_id, current_user_id, current_user_id)
+    ).fetchone()
+    if not conv:
+        return jsonify({"error": "Conversation not found"}), 404
+
+    if current_user_id == conv['user1_id']:
+        db.execute("UPDATE dm_conversations SET user1_delete_requested = 0 WHERE id = ?", (conversation_id,))
+    else:
+        db.execute("UPDATE dm_conversations SET user2_delete_requested = 0 WHERE id = ?", (conversation_id,))
+    db.commit()
+    return jsonify({"status": "ok"})
 
 
 # --- Crypto stub endpoints ---

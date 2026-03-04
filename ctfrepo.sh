@@ -5,7 +5,7 @@ set -e
 # Resolve the script's own directory so it works from anywhere
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CHALLENGE_DIR="$SCRIPT_DIR/static/challenge"
-FLAG="FLAG{exposed_git_repository_secret}"
+FLAG="CTF{exposed_git_repository_secret}"
 
 # Only build if .git doesn't exist yet (idempotent)
 if [ -d "$CHALLENGE_DIR/.git" ]; then
@@ -297,7 +297,7 @@ exposed here for internal development reference.
 
 - The `.git/` directory is browseable.
 - Try reconstructing the full commit history.
-- Flag format: `FLAG{...}`
+- Flag format: `CTF{...}`
 READMEEOF
 
 echo ""

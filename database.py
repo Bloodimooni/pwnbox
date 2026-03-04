@@ -215,7 +215,7 @@ def _seed_data(db):
     # conversation id=1
     db.execute(
         "INSERT INTO dm_messages (conversation_id, sender_id, content) VALUES (?, ?, ?)",
-        (1, 2, "Hi Bob, automated security report for Q4. Confidential access key for the audit portal: FLAG{idor_token_auth_bypass_privesc_complete}")
+        (1, 2, "Hi Bob, automated security report for Q4. Confidential access key for the audit portal: CTF{idor_token_auth_bypass_privesc_complete}")
     )
     db.execute(
         "INSERT INTO dm_messages (conversation_id, sender_id, content) VALUES (?, ?, ?)",
@@ -243,7 +243,7 @@ def _seed_data(db):
         'sarah_chen':  ('sarah2024!',                           None),
         'manager_bob': ('b0bM@nager2024!',                      None),
         # compliancebot's "password" in the legacy system is the flag
-        'compliancebot':   ('FLAG{md5_b64_l3g4cy_p4ss_cr4ck3d}',   None),
+        'compliancebot':   ('CTF{md5_b64_l3g4cy_p4ss_cr4ck3d}',    None),
     }
     for username, (plaintext, _) in legacy_passwords.items():
         db.execute(

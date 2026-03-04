@@ -25,7 +25,19 @@ RUN mkdir -p /opt/corpchat && \
     gcc -x c - -o /opt/corpchat/corpchat-admin -lsqlite3 -O0 -no-pie && \
     chmod 755 /opt/corpchat/corpchat-admin
 
-RUN mkdir -p /data/uploads /data/backups /data/logs
+RUN mkdir -p /data/uploads /data/uploads/tools /data/backups /data/logs /app/scripts
+
+# Create low-privilege service account that the Flask app runs as.
+# /app is root-owned but group-readable by corpchat (app code is read-only at runtime).
+# /data is fully owned by corpchat so the app can write the DB, logs, and uploads.
+# /data/uploads and /data/uploads/tools are 777 so any user (incl. CTF reverse-shell)
+# can write there — intentional: enables the wildcard-tar privilege escalation challenge.
+RUN useradd -r -s /bin/false -M corpchat && \
+    chown -R root:corpchat /app && \
+    chmod -R g+rX,o-rwx /app && \
+    chown -R corpchat:corpchat /data && \
+    chmod 755 /data && \
+    chmod 777 /data/uploads /data/uploads/tools
 
 # SSH: replace default config with a clean authoritative one so Debian defaults
 # can't silently override PasswordAuthentication

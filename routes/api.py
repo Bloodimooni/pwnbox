@@ -50,11 +50,7 @@ def debug_auth_required(f):
     def decorated(*args, **kwargs):
         token = request.headers.get('X-API-Token')
         if token and token == debug_token:
-            db = get_db()
-            user = db.execute("SELECT * FROM users WHERE api_token = ?", (token,)).fetchone()
-            if user and user['is_active']:
-                g.api_user = user
-                return f(*args, **kwargs)
+            return f(*args, **kwargs)
         return jsonify({"error": "Authentication required"}), 401
     return decorated
 
@@ -239,6 +235,7 @@ def upload_attachment(channel_id):
         "data": {
             "id": cursor.lastrowid,
             "filename": original_filename,
+            "stored_filename": stored_filename,
             "mime_type": mime_type,
             "file_size": file_size
         }
@@ -249,10 +246,21 @@ def upload_attachment(channel_id):
 @api_auth_required
 def get_user(user_id):
     db = get_db()
-    user = db.execute(
-        "SELECT id, username, display_name, bio, avatar_filename, created_at FROM users WHERE id = ?",
-        (user_id,)
-    ).fetchone()
+    requesting_role = g.api_user['role'] or 'user'
+
+    if requesting_role in ('user', 'admin'):
+        # VULNERABILITY (IDOR): api_token is returned for ANY user, not just the requesting user.
+        # Accessible only after the initial access escalation (role='user' or above).
+        user = db.execute(
+            "SELECT id, username, display_name, bio, avatar_filename, created_at, role, api_token FROM users WHERE id = ?",
+            (user_id,)
+        ).fetchone()
+    else:
+        # new_user accounts only see public profile fields — no token exposed
+        user = db.execute(
+            "SELECT id, username, display_name, bio, avatar_filename, created_at, role FROM users WHERE id = ?",
+            (user_id,)
+        ).fetchone()
 
     if not user:
         return jsonify({"error": "User not found"}), 404
@@ -587,6 +595,7 @@ def upload_dm_attachment(conversation_id):
         "data": {
             "id": cursor.lastrowid,
             "filename": original_filename,
+            "stored_filename": stored_filename,
             "mime_type": mime_type,
             "file_size": file_size
         }
@@ -820,25 +829,47 @@ def crypto_encrypt():
         return jsonify({"error": "Data field required"}), 400
 
     plaintext = data['data']
-    # Simple base64 encoding as a placeholder -- team 4 will replace with real (weak) crypto
-    encrypted = base64.b64encode(plaintext.encode()).decode()
+    # VULNERABILITY: single-byte XOR cipher with a time-based key.
+    # The key is derived from the current UTC hour — it rotates every 60 minutes.
+    # An attacker can recover the key via a chosen-plaintext attack:
+    #   encrypt a known string (e.g. null bytes) at the same hour → XOR with ciphertext → plaintext.
+    key_byte = int(time.time() // 3600) & 0xFF
+    encrypted_bytes = bytes(b ^ key_byte for b in plaintext.encode())
+    encrypted = base64.b64encode(encrypted_bytes).decode()
 
     return jsonify({
         "data": {
             "encrypted": encrypted,
-            "algorithm": "base64-placeholder"
+            "algorithm": "corpchat-xor-v1"
         }
     })
+
+
+@api_bp.route('/files/download/<path:filename>')
+@debug_auth_required
+def download_file(filename):
+    """Debug-only endpoint to retrieve files from the upload directory.
+    Only accessible with the internal debug API token.
+    """
+    from flask import send_file
+    upload_folder = current_app.config.get('UPLOAD_FOLDER', '/data/uploads')
+    safe_path = os.path.realpath(os.path.join(upload_folder, filename))
+    upload_root = os.path.realpath(upload_folder)
+    if not (safe_path == upload_root or safe_path.startswith(upload_root + os.sep)):
+        return jsonify({"error": "Access denied"}), 403
+    if not os.path.isfile(safe_path):
+        return jsonify({"error": "File not found"}), 404
+    return send_file(safe_path, as_attachment=True)
 
 @api_bp.route('/debug', methods=['POST'])
 @debug_auth_required
 def debug_run():
-    data = request.get_json()
+    data = request.get_json(force=True, silent=True)
     if not data or 'script' not in data:
         return jsonify({"error": "Script name required"}), 400
 
     script_name = data['script']
-    base_dir = '/home/jamie/pwnbox/scripts'
+    base_dir = os.path.join(current_app.root_path, 'scripts')
     script_path = os.path.join(base_dir, script_name)
 
     if not os.path.isfile(script_path):

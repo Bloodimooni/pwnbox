@@ -20,5 +20,21 @@ services:
       - LOG_DIR=/data/logs
     restart: unless-stopped
 
+  xss-bot:
+    build:
+      context: ../bot
+      dockerfile: dockerfile
+    container_name: xss-bot
+    depends_on:
+      - corpchat
+    environment:
+      - TARGET_URL=http://corpchat:8080
+      - BOT_USER=compliancebot
+      - BOT_PASS=C0mpl1anceB0t2026
+      - DEBUG_TOKEN=b3b46de0-86e1-4a98-885d-1a85d2bef561
+      - POLL_MS=60000
+      - CHROMIUM_PATH=/usr/bin/chromium
+    restart: unless-stopped
+
 volumes:
   corpchat_data:

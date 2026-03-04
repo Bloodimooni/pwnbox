@@ -159,6 +159,43 @@ def stop_container(team):
     run(f"docker rm -f {container_name}", check=False)
 
 
+def start_bot_container(cfg, team):
+    """Start the XSS-bot container alongside a team's corpchat instance."""
+    bot_image  = cfg.get("general", "bot_image_name", fallback="pwnbox-bot")
+    network    = cfg.get("general", "docker_network")
+    app_port   = cfg.get("general", "container_app_port")
+    bot_name   = f"pwnbox-bot-{team}"
+    target_url = f"http://pwnbox-{team}:{app_port}"
+
+    # Remove any orphaned bot container first
+    subprocess.run(["docker", "rm", "-f", bot_name], capture_output=True)
+
+    result = run(
+        f"docker run -d "
+        f"--name {bot_name} "
+        f"--network {network} "
+        f"-e TARGET_URL={target_url} "
+        f"-e BOT_USER=compliancebot "
+        f"-e BOT_PASS=C0mpl1anceB0t2026 "
+        f"-e DEBUG_TOKEN=b3b46de0-86e1-4a98-885d-1a85d2bef561 "
+        f"-e POLL_MS=60000 "
+        f"-e CHROMIUM_PATH=/usr/bin/chromium "
+        f"--restart unless-stopped "
+        f"{bot_image}",
+        check=False
+    )
+    if result.returncode != 0:
+        print(f"  Warning: XSS bot failed to start (is '{bot_image}' built?)")
+        print(f"    Run: docker build -f bot/dockerfile -t {bot_image} bot/")
+    else:
+        print(f"  XSS bot:      {bot_name} → {target_url}")
+
+
+def stop_bot_container(team):
+    """Remove the XSS-bot container for a team (best-effort, no error if missing)."""
+    run(f"docker rm -f pwnbox-bot-{team}", check=False)
+
+
 # --- Commands ---
 
 def cmd_create(cfg, team):
@@ -199,6 +236,9 @@ def cmd_create(cfg, team):
 
         # Start container (NetBird starts inside automatically)
         start_container(cfg, team, container_ip)
+
+        # Start XSS bot pointed at this team's corpchat instance
+        start_bot_container(cfg, team)
 
         # Wait for NetBird to register and get its IP
         print(f"  Waiting for NetBird registration...")
@@ -251,6 +291,7 @@ def cmd_destroy(cfg, team):
         # Stop container (also removes NetBird peer when container dies)
         print(f"  Stopping container: {inst['container_name']}")
         stop_container(team)
+        stop_bot_container(team)
 
         del instances[team]
         save_instances(cfg, instances)
@@ -397,13 +438,20 @@ def cmd_resume(cfg, team):
 
 
 def cmd_rebuild(cfg):
-    image = cfg.get("general", "image_name")
+    image       = cfg.get("general", "image_name")
+    bot_image   = cfg.get("general", "bot_image_name", fallback="pwnbox-bot")
     project_root = SCRIPT_DIR / ".."
-    dockerfile = project_root / "docker" / "Dockerfile"
+    dockerfile   = project_root / "docker" / "Dockerfile"
+    bot_dir      = project_root / "bot"
+
     print(f"Rebuilding image '{image}' (with NetBird)...")
     run(f"docker build --build-arg INSTALL_NETBIRD=true -f {dockerfile} -t {image} {project_root}", capture=False)
-    print("Done. New instances will use the updated image.")
-    print("Note: Existing instances still run the old image.")
+
+    print(f"Rebuilding bot image '{bot_image}'...")
+    run(f"docker build -f {bot_dir}/dockerfile -t {bot_image} {bot_dir}", capture=False)
+
+    print("Done. New instances will use the updated images.")
+    print("Note: Existing instances still run the old images.")
 
 
 def main():

@@ -1,6 +1,9 @@
+import os
 import sqlite3
 import uuid
 import json
+import base64
+import hashlib
 from flask import g, current_app
 from werkzeug.security import generate_password_hash
 
@@ -40,6 +43,9 @@ def _migrate_db(db):
         db.execute("ALTER TABLE users ADD COLUMN must_change_password INTEGER DEFAULT 0")
     if 'last_activity' not in user_columns:
         db.execute("ALTER TABLE users ADD COLUMN last_activity TIMESTAMP")
+    # Legacy MD5(base64) password hash — weak scheme discoverable after SSH + binary reversing
+    if 'legacy_password_hash' not in user_columns:
+        db.execute("ALTER TABLE users ADD COLUMN legacy_password_hash TEXT")
 
     # Add conversation_id to files for DM attachment access control
     files_columns = [row[1] for row in db.execute("PRAGMA table_info(files)").fetchall()]
@@ -94,7 +100,7 @@ def _seed_data(db):
         ('admin', generate_password_hash('admin2026!'), 'superadmin')
     )
 
-    # Demo regular user
+    # Demo regular user (id=1)
     demo_token = str(uuid.uuid4())
     db.execute(
         "INSERT INTO users (username, email, password_hash, display_name, bio, api_token) VALUES (?, ?, ?, ?, ?, ?)",
@@ -102,12 +108,38 @@ def _seed_data(db):
          'Demo User', 'Just a demo account for testing.', demo_token)
     )
 
-    # Second demo user for chat
+    # CorpChat bot account (id=2)
     bot_token = str(uuid.uuid4())
     db.execute(
         "INSERT INTO users (username, email, password_hash, display_name, bio, api_token) VALUES (?, ?, ?, ?, ?, ?)",
         ('chatbot', 'bot@corpchat.local', generate_password_hash('bot12345'),
          'CorpChat Bot', 'Automated assistant for CorpChat.', bot_token)
+    )
+
+    # Worker account - sarah_chen (id=3) - her reset token is pre-seeded and discoverable via SQLi
+    sarah_token = str(uuid.uuid4())
+    db.execute(
+        "INSERT INTO users (username, email, password_hash, display_name, bio, api_token, role) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        ('sarah_chen', 'sarah.chen@corpchat.local', generate_password_hash('sarah2024!'),
+         'Sarah Chen', 'Product Manager. Been here 3 years!', sarah_token, 'user')
+    )
+
+    # Manager account - manager_bob (id=4) - has admin role, api_token discoverable via IDOR
+    bob_token = '7f3d9e2a-1b4c-4f8e-a3d7-5c9b0e6f2a1d'
+    db.execute(
+        "INSERT INTO users (username, email, password_hash, display_name, bio, api_token, role) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        ('manager_bob', 'bob.manager@corpchat.local', generate_password_hash('b0bM@nager2024!'),
+         'Bob Manager', 'Senior Manager. Admin access for platform oversight.', bob_token, 'admin')
+    )
+
+    # Compliance bot account - compliancebot (id=5)
+    # Puppeteer bot that logs in and reads all DMs every 60s.
+    # Its browser session carries the XSS flag cookie (httpOnly=false).
+    compliancebot_token = str(uuid.uuid4())
+    db.execute(
+        "INSERT INTO users (username, email, password_hash, display_name, bio, api_token, role) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        ('compliancebot', 'compliancebot@corpchat.local', generate_password_hash('C0mpl1anceB0t2026'),
+         'Compliance Bot', 'Automated compliance monitoring bot. Reads all DM conversations.', compliancebot_token, 'user')
     )
 
     # Default channels
@@ -131,11 +163,19 @@ def _seed_data(db):
     )
     db.execute(
         "INSERT INTO messages (channel_id, user_id, content) VALUES (?, ?, ?)",
-        (1, 2, 'Hello everyone! The new chat system is live.')
+        (1, 2, 'Hello everyone! The new chat system is live. Feel free to explore the channels.')
     )
     db.execute(
         "INSERT INTO messages (channel_id, user_id, content) VALUES (?, ?, ?)",
-        (1, 1, 'Feel free to explore the channels and features.')
+        (1, 3, "Hey team! Quick heads-up - I'm locked out of my account and had to submit a password reset. Waiting for the token to come through to my email. Anyone know how long IT usually takes?")
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content) VALUES (?, ?, ?)",
+        (1, 4, "Hi Sarah! IT is a bit slow this week. Shouldn't be more than a day. Hang tight!")
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content) VALUES (?, ?, ?)",
+        (1, 3, "Thanks Bob! I'll keep checking my inbox. Really need to get back in, I have reports due 😅")
     )
 
     # Seed message in #announcements
@@ -143,6 +183,72 @@ def _seed_data(db):
         "INSERT INTO messages (channel_id, user_id, content) VALUES (?, ?, ?)",
         (2, 2, 'System maintenance scheduled for this weekend. Please save your work.')
     )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content) VALUES (?, ?, ?)",
+        (2, 4, 'Reminder: Q4 security audit is coming up. All managers please review access logs.')
+    )
+
+    # Seed message in #random
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content) VALUES (?, ?, ?)",
+        (3, 1, 'Anyone else think the coffee machine on floor 3 is broken? It keeps making espresso instead of regular.')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content) VALUES (?, ?, ?)",
+        (3, 3, 'Haha yes! I reported it. Facilities said they\'d look at it next week.')
+    )
+
+    # Pre-seed sarah_chen's password reset token (id=3 is sarah_chen)
+    # This token is discoverable via SQL injection on the search endpoint
+    sarah_reset_token = 'a3f8c2e1b4d7f9a0c5e2b8d4f1a6c3e7'
+    db.execute(
+        "INSERT INTO password_resets (user_id, token, status) VALUES (?, ?, 'approved')",
+        (3, sarah_reset_token)
+    )
+
+    # Seed DM conversation between chatbot (id=2) and manager_bob (id=4)
+    # The Stage 3 flag is in this conversation - only accessible after IDOR + token-login escalation
+    db.execute(
+        "INSERT INTO dm_conversations (user1_id, user2_id) VALUES (?, ?)",
+        (2, 4)
+    )
+    # conversation id=1
+    db.execute(
+        "INSERT INTO dm_messages (conversation_id, sender_id, content) VALUES (?, ?, ?)",
+        (1, 2, "Hi Bob, automated security report for Q4. Confidential access key for the audit portal: FLAG{idor_token_auth_bypass_privesc_complete}")
+    )
+    db.execute(
+        "INSERT INTO dm_messages (conversation_id, sender_id, content) VALUES (?, ?, ?)",
+        (1, 4, "Thanks! I'll review this. Make sure this stays between us - this is sensitive.")
+    )
+    db.execute(
+        "INSERT INTO dm_messages (conversation_id, sender_id, content) VALUES (?, ?, ?)",
+        (1, 2, "One more thing: the compliance monitoring bot (username: compliancebot) went live this week. "
+               "It automatically reads every DM conversation every 60 seconds to check for policy violations. "
+               "Heads up: I flagged a potential issue to the dev team - the DM renderer passes message content "
+               "directly to the browser without sanitization. Could be worth looking at before the audit.")
+    )
+
+    # Seed legacy MD5(base64(password)) hashes for all users.
+    # This is the "weak crypto" scheme players discover after SSH access + DB dump via the binary.
+    # compliancebot's legacy "password" is the flag itself — cracking it reveals the next step.
+    def _legacy_hash(plaintext):
+        b64 = base64.b64encode(plaintext.encode()).decode()
+        return hashlib.md5(b64.encode()).hexdigest()
+
+    legacy_passwords = {
+        'demo':        ('demo123',                              None),
+        'chatbot':     ('bot12345',                             None),
+        'sarah_chen':  ('sarah2024!',                           None),
+        'manager_bob': ('b0bM@nager2024!',                      None),
+        # compliancebot's "password" in the legacy system is the flag
+        'compliancebot':   ('FLAG{md5_b64_l3g4cy_p4ss_cr4ck3d}',   None),
+    }
+    for username, (plaintext, _) in legacy_passwords.items():
+        db.execute(
+            "UPDATE users SET legacy_password_hash = ? WHERE username = ?",
+            (_legacy_hash(plaintext), username)
+        )
 
     # Default system settings
     settings = [

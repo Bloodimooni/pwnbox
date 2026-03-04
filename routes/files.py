@@ -4,7 +4,7 @@ import mimetypes
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, \
     current_app, send_from_directory
 from database import get_db
-from routes.auth import login_required, log_event
+from routes.auth import login_required, full_access_required, log_event
 
 files_bp = Blueprint('files', __name__)
 
@@ -30,21 +30,50 @@ def check_file_access(file_record, user_id):
 
 
 @files_bp.route('/')
-@login_required
+@full_access_required
 def index():
     db = get_db()
-    files = db.execute(
+    db_files = db.execute(
         """SELECT f.*, u.username, u.display_name
            FROM files f
            JOIN users u ON f.uploaded_by = u.id
            WHERE f.channel_id IS NULL AND f.conversation_id IS NULL
            ORDER BY f.created_at DESC"""
     ).fetchall()
-    return render_template('files/list.html', files=files)
+
+    # Convert DB rows to plain dicts and mark as registered.
+    all_files = [{**dict(f), 'fs_only': False} for f in db_files]
+
+    # Also surface files physically present in the uploads root that aren't in the DB.
+    # This lets a CTF player move a file there from a reverse shell and see it immediately,
+    # without needing to register it through the normal upload flow.
+    upload_folder = current_app.config['UPLOAD_FOLDER']
+    db_stored = {f['stored_filename'] for f in db_files}
+    try:
+        for fname in sorted(os.listdir(upload_folder)):
+            fpath = os.path.join(upload_folder, fname)
+            if os.path.isfile(fpath) and not fname.startswith('.') and fname not in db_stored:
+                all_files.append({
+                    'id': None,
+                    'filename': fname,
+                    'stored_filename': fname,
+                    'file_size': os.path.getsize(fpath),
+                    'mime_type': mimetypes.guess_type(fname)[0] or 'application/octet-stream',
+                    'username': 'system',
+                    'display_name': 'system',
+                    'created_at': None,
+                    'is_encrypted': False,
+                    'uploaded_by': None,
+                    'fs_only': True,
+                })
+    except OSError:
+        pass
+
+    return render_template('files/list.html', files=all_files)
 
 
 @files_bp.route('/upload', methods=['POST'])
-@login_required
+@full_access_required
 def upload():
     if 'file' not in request.files:
         flash('No file selected.')
@@ -86,7 +115,7 @@ def upload():
 
 
 @files_bp.route('/download/<int:file_id>')
-@login_required
+@full_access_required
 def download(file_id):
     db = get_db()
     file_record = db.execute("SELECT * FROM files WHERE id = ?", (file_id,)).fetchone()
@@ -108,8 +137,24 @@ def download(file_id):
     )
 
 
-@files_bp.route('/view/<int:file_id>')
+@files_bp.route('/download-raw/<path:filename>')
 @login_required
+def download_raw(filename):
+    """Download a file from the uploads root by name (no DB registration required).
+    Used for files that appear via filesystem scan in the index view.
+    """
+    safe_name = os.path.basename(filename)
+    upload_folder = current_app.config['UPLOAD_FOLDER']
+    fpath = os.path.join(upload_folder, safe_name)
+    if not os.path.isfile(fpath):
+        flash('File not found.')
+        return redirect(url_for('files.index'))
+    log_event('file_download_raw', session['user_id'], {'filename': safe_name})
+    return send_from_directory(upload_folder, safe_name, as_attachment=True)
+
+
+@files_bp.route('/view/<int:file_id>')
+@full_access_required
 def view(file_id):
     db = get_db()
     file_record = db.execute("SELECT * FROM files WHERE id = ?", (file_id,)).fetchone()
@@ -130,7 +175,7 @@ def view(file_id):
 
 
 @files_bp.route('/delete/<int:file_id>', methods=['POST'])
-@login_required
+@full_access_required
 def delete(file_id):
     db = get_db()
     file_record = db.execute("SELECT * FROM files WHERE id = ?", (file_id,)).fetchone()

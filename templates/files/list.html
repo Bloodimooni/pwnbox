@@ -17,7 +17,7 @@
                 <span class="file-name">{{ file.filename }}</span>
                 <span class="file-meta">
                     Uploaded by {{ file.display_name or file.username }}
-                    &middot; {{ file.created_at }}
+                    {% if file.created_at %}&middot; {{ file.created_at }}{% endif %}
                     &middot; {{ (file.file_size / 1024)|round(1) }} KB
                     {% if file.is_encrypted %}
                         &middot; <span class="badge badge-info">Encrypted</span>
@@ -25,12 +25,16 @@
                 </span>
             </div>
             <div class="file-actions">
-                <a href="{{ url_for('files.download', file_id=file.id) }}" class="btn btn-secondary btn-sm">Download</a>
-                {% if file.uploaded_by == session.get('user_id') %}
-                <form action="{{ url_for('files.delete', file_id=file.id) }}" method="POST" style="display: inline;"
-                      onsubmit="return confirm('Delete this file?')">
-                    <button type="submit" class="btn btn-danger btn-sm">Delete</button>
-                </form>
+                {% if file.fs_only %}
+                    <a href="{{ url_for('files.download_raw', filename=file.stored_filename) }}" class="btn btn-secondary btn-sm">Download</a>
+                {% else %}
+                    <a href="{{ url_for('files.download', file_id=file.id) }}" class="btn btn-secondary btn-sm">Download</a>
+                    {% if file.uploaded_by == session.get('user_id') %}
+                    <form action="{{ url_for('files.delete', file_id=file.id) }}" method="POST" style="display: inline;"
+                          onsubmit="return confirm('Delete this file?')">
+                        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                    </form>
+                    {% endif %}
                 {% endif %}
             </div>
         </div>

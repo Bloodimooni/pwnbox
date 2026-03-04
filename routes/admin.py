@@ -179,11 +179,6 @@ def approve_reset(request_id):
     ).fetchone()
 
     if reset_req:
-        temp_password = uuid.uuid4().hex[:12]
-        db.execute(
-            "UPDATE users SET password_hash = ?, must_change_password = 1 WHERE id = ?",
-            (generate_password_hash(temp_password), reset_req['user_id'])
-        )
         db.execute(
             "UPDATE password_resets SET status = 'approved', reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP WHERE id = ?",
             (session.get('admin_username'), request_id)
@@ -194,7 +189,8 @@ def approve_reset(request_id):
             'target_user_id': reset_req['user_id'],
             'admin': session.get('admin_username')
         })
-        flash(f'Password reset approved for {reset_req["username"]}. Temporary password: {temp_password}')
+        reset_url = url_for('auth.reset_password_confirm', token=reset_req['token'], _external=True)
+        flash(f'Reset approved for {reset_req["username"]}. Send them this link: {reset_url}', 'success')
     else:
         flash('Reset request not found or already processed.')
 

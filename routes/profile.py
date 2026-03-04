@@ -2,7 +2,7 @@ import os
 import uuid
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app, send_from_directory
 from database import get_db
-from routes.auth import login_required, log_event
+from routes.auth import login_required, full_access_required, log_event
 
 profile_bp = Blueprint('profile', __name__)
 
@@ -24,7 +24,7 @@ def view(user_id):
 
 
 @profile_bp.route('/edit', methods=['GET', 'POST'])
-@login_required
+@full_access_required
 def edit():
     db = get_db()
     user = db.execute("SELECT * FROM users WHERE id = ?", (session['user_id'],)).fetchone()

@@ -71,10 +71,14 @@ def create_app():
         return redirect(url_for('auth.login'))
 
     # CTF Challenge: Serve challenge directory with exposed git and directory listing
+    # Requires login - accessible to any authenticated user (new_user or above)
     @app.route('/challenge/')
     @app.route('/challenge/<path:filepath>')
     def serve_challenge(filepath=''):
         """Serve CTF challenge files including .git directory with directory listing"""
+        if 'user_id' not in session:
+            return redirect(url_for('auth.login'))
+
         challenge_dir = os.path.join(os.path.dirname(__file__), 'static', 'challenge')
         
         # Security: prevent directory traversal

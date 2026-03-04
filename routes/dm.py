@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from database import get_db
-from routes.auth import login_required
+from routes.auth import login_required, full_access_required
 import re
 
 dm_bp = Blueprint('dm', __name__)
@@ -26,19 +26,19 @@ def get_or_create_conversation(user1_id, user2_id):
 
 
 @dm_bp.route('/')
-@login_required
+@full_access_required
 def index():
     return dm_view(None)
 
 
 @dm_bp.route('/<int:conversation_id>')
-@login_required
+@full_access_required
 def conversation(conversation_id):
     return dm_view(conversation_id)
 
 
 @dm_bp.route('/user/<int:user_id>')
-@login_required
+@full_access_required
 def start_with_user(user_id):
     """Start or open a DM with a specific user."""
     current_user_id = session['user_id']
@@ -57,7 +57,7 @@ def start_with_user(user_id):
 
 
 @dm_bp.route('/new', methods=['POST'])
-@login_required
+@full_access_required
 def new_conversation():
     """Start a new DM from the user picker."""
     target_user_id = request.form.get('user_id', type=int)
@@ -111,6 +111,7 @@ def dm_view(conversation_id):
             (conversation_id,)
         ).fetchall()
 
+        # --- XSS — Leon ---
         messages = [dict(m) for m in messages]
         for m in messages:
             if m['content']:

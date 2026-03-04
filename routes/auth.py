@@ -172,6 +172,7 @@ def logout():
     return redirect(url_for('auth.login'))
 
 
+# --- Authentication exploits — Maxima ---
 @auth_bp.route('/reset-password', methods=['GET', 'POST'])
 def reset_password_request():
     if request.method == 'POST':
@@ -244,6 +245,7 @@ def reset_password_confirm(token):
     return render_template('auth/reset_confirm.html', token=token, username=reset['username'])
 
 
+# --- Authentication exploits — Maxima ---
 @auth_bp.route('/token-login')
 def token_login():
     """Developer convenience endpoint: exchange an API token for a web session.

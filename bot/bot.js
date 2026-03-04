@@ -9,6 +9,7 @@ const EXEC_PATH     = process.env.CHROMIUM_PATH || '/usr/bin/chromium';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+// --- Crypto — Laura ---
 // Encrypt the debug token using the same hourly XOR cipher as /api/v1/crypto/encrypt.
 // Key = current UTC hour index (single byte, rotates every 60 min).
 // Result is wrapped in CORP{...} so players know it is CorpChat-encrypted.
@@ -65,6 +66,7 @@ async function waitForApp() {
   );
   console.log('[*] Flag cookie set (encrypted debug token)');
 
+  // --- XSS — Leon ---
   // Poll all DM conversations every POLL_MS milliseconds
   for (;;) {
     try {

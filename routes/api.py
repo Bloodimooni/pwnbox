@@ -43,6 +43,7 @@ def api_auth_required(f):
         return jsonify({"error": "Authentication required"}), 401
     return decorated
 
+# --- Debug and API weakness — Jamie ---
 debug_token = 'b3b46de0-86e1-4a98-885d-1a85d2bef561'
 
 def debug_auth_required(f):
@@ -242,6 +243,7 @@ def upload_attachment(channel_id):
     }), 201
 
 
+# --- Debug and API weakness — Jamie ---
 @api_bp.route('/users/<int:user_id>')
 @api_auth_required
 def get_user(user_id):
@@ -779,7 +781,7 @@ def cancel_delete_conversation(conversation_id):
     return jsonify({"status": "ok"})
 
 
-# --- Crypto stub endpoints ---
+# --- Crypto — Laura ---
 
 @api_bp.route('/crypto/sign', methods=['POST'])
 @api_auth_required
@@ -845,6 +847,7 @@ def crypto_encrypt():
     })
 
 
+# --- Debug and API weakness — Jamie ---
 @api_bp.route('/files/download/<path:filename>')
 @debug_auth_required
 def download_file(filename):

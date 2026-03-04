@@ -13,3 +13,4 @@ infra/flags.json
 documentation/writeup
 bot/node_modules
 bot/package-lock.json
+static/challenge/

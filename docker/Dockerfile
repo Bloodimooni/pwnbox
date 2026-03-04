@@ -19,6 +19,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# --- Reversing and Privesc — Joshua ---
 # Compile admin tool
 RUN mkdir -p /opt/corpchat && \
     sed 's|"./data/|"/data/|g' reversing-challenge/admin-tools.c | \

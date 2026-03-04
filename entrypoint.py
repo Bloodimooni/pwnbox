@@ -152,6 +152,7 @@ def setup_system_user():
 
 
 # ── Challenge setup ────────────────────────────────────────────────────────────
+# --- Reversing and Privesc — Joshua ---
 
 def setup_challenge():
     flag_path = '/root/flag.txt'
@@ -177,6 +178,7 @@ def setup_challenge():
 
 
 # ── Privilege drop ─────────────────────────────────────────────────────────────
+# --- Reversing and Privesc — Joshua ---
 
 def drop_privileges(username='corpchat'):
     """Drop from root to the named service account before exec'ing the Flask app.

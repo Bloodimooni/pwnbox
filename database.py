@@ -229,6 +229,7 @@ def _seed_data(db):
                "directly to the browser without sanitization. Could be worth looking at before the audit.")
     )
 
+    # --- Crypto — Laura ---
     # Seed legacy MD5(base64(password)) hashes for all users.
     # This is the "weak crypto" scheme players discover after SSH access + DB dump via the binary.
     # compliancebot's legacy "password" is the flag itself — cracking it reveals the next step.

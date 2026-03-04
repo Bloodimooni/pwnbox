@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from database import get_db
-from routes.auth import login_required, log_event
+from routes.auth import login_required, full_access_required, log_event
 
 chat_bp = Blueprint('chat', __name__)
 
@@ -9,11 +9,23 @@ chat_bp = Blueprint('chat', __name__)
 @login_required
 def index():
     db = get_db()
-    channels = db.execute("SELECT * FROM channels ORDER BY name").fetchall()
+
+    user = db.execute("SELECT role FROM users WHERE id = ?", (session['user_id'],)).fetchone()
+    user_role = user['role'] if user else 'user'
+
+    # New users are restricted to the #general channel only
+    if user_role == 'new_user':
+        channels = db.execute("SELECT * FROM channels WHERE name = 'general'").fetchall()
+    else:
+        channels = db.execute("SELECT * FROM channels ORDER BY name").fetchall()
+
     active_channel_id = request.args.get('channel', None)
 
     if active_channel_id:
         active_channel = db.execute("SELECT * FROM channels WHERE id = ?", (active_channel_id,)).fetchone()
+        # Restrict new_user to general only - bounce them back if they try to access other channels
+        if active_channel and user_role == 'new_user' and active_channel['name'] != 'general':
+            active_channel = db.execute("SELECT * FROM channels WHERE name = 'general'").fetchone()
     else:
         active_channel = db.execute("SELECT * FROM channels WHERE name = 'general'").fetchone()
 
@@ -33,9 +45,6 @@ def index():
             (active_channel['id'],)
         ).fetchall()
 
-    user = db.execute("SELECT role FROM users WHERE id = ?", (session['user_id'],)).fetchone()
-    user_role = user['role'] if user else 'user'
-
     return render_template('chat/chat.html',
                            channels=channels,
                            active_channel=active_channel,
@@ -50,7 +59,7 @@ def channel(channel_id):
 
 
 @chat_bp.route('/channel/create', methods=['POST'])
-@login_required
+@full_access_required
 def create_channel():
     name = request.form.get('name', '').strip().lower().replace(' ', '-')
     description = request.form.get('description', '').strip()

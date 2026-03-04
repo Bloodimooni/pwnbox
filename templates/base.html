@@ -23,6 +23,7 @@
                     <span class="nav-icon">&#9993;</span> Chat
                     <span class="nav-badge" id="chat-badge" style="display: none;"></span>
                 </a>
+                {% if session.get('role', 'user') != 'new_user' %}
                 <a href="{{ url_for('dm.index') }}" class="nav-item {% if request.path.startswith('/dm') %}active{% endif %}" id="nav-dm">
                     <span class="nav-icon">&#128172;</span> Messages
                     <span class="nav-badge" id="dm-badge" style="display: none;"></span>
@@ -30,6 +31,7 @@
                 <a href="{{ url_for('files.index') }}" class="nav-item {% if request.path.startswith('/files') %}active{% endif %}">
                     <span class="nav-icon">&#128196;</span> Files
                 </a>
+                {% endif %}
                 <a href="{{ url_for('search.index') }}" class="nav-item {% if request.path.startswith('/search') %}active{% endif %}">
                     <span class="nav-icon">&#128269;</span> Search
                 </a>

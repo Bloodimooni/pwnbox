@@ -30,6 +30,15 @@ This directory contains technical documentation for the PwnBox CTF platform.
 ### Data Layer
 - [Database Schema](database-schema.md) — Tables, columns, constraints, relationships, and migrations.
 
+### CTF Challenges
+- [CTF Challenges](ctf-challenges.md) — Overview of all five flags, categories, and intended attack paths.
+- [Full Walkthrough](writeup/ctf-walkthrough.md) — Step-by-step solution for every flag.
+- [Git Challenge Writeup](writeup/git-challenge-writeup.md) — Exposed `.git` repository (Flag 1).
+- [IDOR / Token Bypass Writeup](writeup/idor-challenge-writeup.md) — SQL injection, IDOR, and DM access (Flag 2).
+- [Crypto Challenge Writeup](writeup/crypto-challenge-writeup.md) — MD5(base64) hash cracking (Flag 3).
+- [Reverse Engineering Writeup](writeup/re-challenge-writeup.md) — XOR-encoded binary backdoor (Flag 4).
+- [Privilege Escalation Writeup](writeup/privesc-challenge-writeup.md) — Wildcard tar cron exploit (Flag 5).
+
 ---
 
 ## Quick Reference
@@ -46,11 +55,12 @@ This directory contains technical documentation for the PwnBox CTF platform.
 
 ### Default Accounts
 
-| Role | Username | Password |
-|------|----------|----------|
-| Regular user | `demo` | `demo123` |
-| Administrator | `admin` | `admin2026!` |
-| Bot | `chatbot` | `bot12345` |
+| Role | Username | Password | Notes |
+|------|----------|----------|-------|
+| Regular user | `demo` | `demo123` | General-purpose test account |
+| Administrator | `admin` | `admin2026!` | Admin panel at `/admin` |
+| XSS bot | `compliancebot` | `C0mpl1anceB0t2026` | Puppeteer bot; carries flag cookie |
+| SSH service account | `svc_backup` | `netterFeger69#` | Discoverable via binary reversing |
 
 ### Run Script Commands
 
@@ -60,7 +70,8 @@ This directory contains technical documentation for the PwnBox CTF platform.
 | `./run.sh portal` | Start the CTF player portal |
 | `./run.sh scale` | Start the operator scaler |
 | `./run.sh app` | Run CorpChat standalone in Docker |
-| `./run.sh compose` | Run via Docker Compose |
+| `./run.sh app --netbird` | Run standalone with NetBird VPN |
+| `./run.sh compose` | Run via Docker Compose (includes XSS bot) |
 | `./run.sh build` | Build or rebuild the Docker image |
 
 ---
@@ -71,28 +82,39 @@ This directory contains technical documentation for the PwnBox CTF platform.
 pwnbox/
 ├── app.py                       # Flask application factory
 ├── config.py                    # Configuration classes
-├── database.py                  # Database initialisation and migrations
+├── database.py                  # Database initialisation, migrations, and seed data
 ├── schema.sql                   # SQLite table definitions
 ├── requirements.txt             # Python dependencies
-├── entrypoint.py                # Container startup script
+├── entrypoint.py                # Container startup: NetBird, SSH, cron, challenge setup
 ├── run.sh                       # Unified runner for all components
 ├── setup-host.sh                # One-time host environment setup
+├── ctfrepo.sh                   # Builds the fake exposed git repository for Flag 1
 ├── docker/
-│   ├── Dockerfile               # Container image definition
-│   └── docker-compose.yml       # Single-instance development stack
+│   ├── Dockerfile               # Container image definition (compiles corpchat-admin)
+│   └── docker-compose.yml       # Single-instance development stack with XSS bot
 ├── infra/
 │   ├── config.ini               # Infrastructure configuration
 │   ├── portal.py                # CTF self-service portal
 │   ├── scaler.py                # Operator instance scaler
 │   ├── pwnbox-manager.py        # Instance lifecycle CLI
-│   ├── flags.json               # Flag definitions
+│   ├── flags.json               # Flag strings (5 total)
 │   └── templates/               # Portal and scaler HTML templates
+├── bot/
+│   ├── bot.js                   # Puppeteer XSS bot (logs in as compliancebot, visits all DMs)
+│   ├── dockerfile               # Node.js + Chromium image for the bot
+│   └── package.json             # Bot dependencies
 ├── reversing-challenge/
-│   └── admin-tools.c            # Source for the compiled challenge binary
+│   ├── admin-tools.c            # Source for the compiled challenge binary
+│   ├── corpchat-admin           # Compiled binary (seeded into /data/uploads/tools/)
+│   └── xor_encode.c             # XOR encoding utility used to produce the encoded arrays
 ├── routes/                      # Flask route blueprints
 ├── templates/                   # Jinja2 application templates
-├── static/                      # CSS and JavaScript assets
+├── static/
+│   ├── css/                     # Stylesheets
+│   ├── js/                      # JavaScript (chat.js, dm.js, admin.js)
+│   └── challenge/               # Exposed git repository for Flag 1 (.git directory inside)
 └── documentation/               # This documentation directory
+    └── writeup/                 # Per-challenge writeups and the full walkthrough
 ```
 
 ---
@@ -105,3 +127,5 @@ pwnbox/
 - **Working on the frontend?** See [Frontend JavaScript](frontend.md) and [Templates](templates.md).
 - **Integrating with the API?** The [REST API Reference](api-reference.md) covers all endpoints.
 - **Database questions?** See [Database Schema](database-schema.md).
+- **Solving the CTF?** See [CTF Challenges](ctf-challenges.md) for an overview, or jump straight to the [Full Walkthrough](writeup/ctf-walkthrough.md).
+- **Setting challenge flags or editing challenge content?** See `infra/flags.json`, `database.py` (`_seed_data`), and `entrypoint.py` (`setup_challenge`).

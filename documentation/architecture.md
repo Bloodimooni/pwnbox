@@ -62,7 +62,7 @@ The application uses Flask's **application factory pattern** (`app.py:6-73`). Th
 | Direct Messages | `dm_bp` | `/dm` | `routes/dm.py` |
 | Profile | `profile_bp` | `/profile` | `routes/profile.py` |
 | Files | `files_bp` | `/files` | `routes/files.py` |
-| Search | `search_bp` | `/search` | `routes/search.py` |
+| Search | `search_bp` | `/search` | `routes/search2.py` (intentionally vulnerable — contains SQL injection for Flag 2) |
 | Admin | `admin_bp` | `/admin` | `routes/admin.py` |
 | REST API | `api_bp` | `/api/v1` | `routes/api.py` |
 
@@ -211,6 +211,85 @@ This diagram shows how a message flows through the system:
 4. chat.js sets pendingAttachmentId = 7
 5. User sends message → POST includes attachment_id: 7
 6. Message rendered with <img src="/files/view/7">
+```
+
+---
+
+## XSS Bot (`bot/bot.js`)
+
+The Docker Compose stack (`docker-compose.yml`) includes a second service: an **XSS bot** running Puppeteer with a headless Chromium browser. The bot is the delivery mechanism for the XSS challenge.
+
+### Behaviour
+
+1. On startup the bot waits until the CorpChat login page responds.
+2. It logs in as `compliancebot` using Puppeteer to control Chromium.
+3. It sets two cookies on the CorpChat domain:
+   - `flag` — the debug API token (`b3b46de0-...`) encrypted with the current UTC hour as the XOR key, wrapped in `CORP{<base64>}`.
+   - `hint` — a plain-text string pointing players toward the crypto endpoint.
+4. Every 60 seconds it navigates to `/dm`, collects all DM conversation links, and visits each one.
+
+### Why the Cookie is Readable
+
+The `flag` cookie is set with `httpOnly: false`, meaning JavaScript executing in the page can access `document.cookie`. If a player sends a DM to `compliancebot` containing a JavaScript payload, the bot's browser will render the DM page and execute the payload.
+
+### The Encryption Scheme
+
+The flag cookie value is not the raw token — it is the token XOR-encrypted with the current hour index (`Math.floor(Date.now() / 3_600_000) & 0xFF`). The same scheme is implemented on the server side at `POST /api/v1/crypto/encrypt`. Players can use that endpoint as a chosen-plaintext oracle to recover the key byte and decrypt the cookie.
+
+```javascript
+// bot.js
+function encryptToken(token) {
+  const keyByte = Math.floor(Date.now() / 3_600_000) & 0xFF;
+  const buf = Buffer.from(token, 'utf8');
+  const enc = Buffer.from(buf.map(b => b ^ keyByte));
+  return 'CORP{' + enc.toString('base64') + '}';
+}
+```
+
+---
+
+## Container Startup and Challenge Setup (`entrypoint.py`)
+
+`entrypoint.py` is the container's PID 1 entrypoint. It runs entirely as root before handing off to Flask. The startup sequence is:
+
+```
+1. setup_netbird()     — clear NetBird state, start service, connect to management server
+2. setup_sshd()        — generate host keys, start sshd
+3. setup_cron()        — start cron daemon
+4. setup_system_user() — create svc_backup user, fix /data ownership, chmod /data/uploads 777
+5. setup_challenge()   — write /root/flag.txt, install cron job, seed corpchat-admin binary
+6. drop_privileges()   — setuid/setgid to 'corpchat' service account
+7. os.execvp()         — exec python app.py (Flask replaces entrypoint process)
+```
+
+### Privilege Drop
+
+After all setup is complete, `entrypoint.py` drops from root to the `corpchat` service account:
+
+```python
+os.setgroups([pw.pw_gid])
+os.setgid(pw.pw_gid)
+os.setuid(pw.pw_uid)
+```
+
+Flask runs as `corpchat`, not root. Any RCE via the web application gives the attacker a shell as `corpchat`, not root — which is why the wildcard tar privilege escalation (Flag 5) is needed to reach `/root/flag.txt`.
+
+### Challenge Setup Details
+
+```python
+def setup_challenge():
+    # Flag 5: Write the root flag
+    open('/root/flag.txt', 'w').write('CTF{w1ldcard_t4r_g0t_r00t!}\n')
+    os.chmod('/root/flag.txt', 0o600)
+
+    # Flag 5: Install the vulnerable cron job
+    open('/etc/cron.d/corpchat-backup', 'w').write(
+        '* * * * * root cd /data/uploads && tar -czf /tmp/uploads_backup.tar.gz *\n'
+    )
+
+    # Flag 4: Seed the corpchat-admin binary into the world-writable uploads dir
+    shutil.copy2('/opt/corpchat/corpchat-admin', '/data/uploads/tools/corpchat-admin')
+    os.chmod('/data/uploads/tools/corpchat-admin', 0o755)
 ```
 
 ---

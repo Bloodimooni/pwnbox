@@ -99,6 +99,7 @@ The schema is defined in `schema.sql` and consists of **12 tables**. Foreign key
 | `is_active` | INTEGER | `1` | -- | Whether the account is enabled (1) or disabled (0) |
 | `must_change_password` | INTEGER | `0` | -- | Forces password change on next login (1=yes) |
 | `last_activity` | TIMESTAMP | NULL | -- | Updated on every request via `before_request` hook |
+| `legacy_password_hash` | TEXT | NULL | -- | `MD5(base64(password))` — intentionally weak legacy scheme for the crypto CTF challenge |
 | `created_at` | TIMESTAMP | `CURRENT_TIMESTAMP` | -- | Account creation time |
 | `last_login` | TIMESTAMP | NULL | -- | Updated on each successful login |
 
@@ -107,6 +108,7 @@ The schema is defined in `schema.sql` and consists of **12 tables**. Foreign key
 - `is_active = 0` blocks login and API access
 - `last_activity` is used to determine online status (active within last 5 minutes)
 - `must_change_password` redirects user to `/change-password` on every request
+- `legacy_password_hash` is seeded for every user; for `compliancebot` the plaintext is the Flag 3 string (see [Crypto Challenge Writeup](writeup/crypto-challenge-writeup.md))
 
 ---
 
@@ -158,13 +160,15 @@ The schema is defined in `schema.sql` and consists of **12 tables**. Foreign key
 | `attachment_id` | INTEGER | NULL | REFERENCES files(id) | Optional file attachment |
 | `is_encrypted` | INTEGER | `0` | -- | Whether message is encrypted (placeholder) |
 | `signature` | TEXT | NULL | -- | Cryptographic signature (placeholder) |
+| `is_deleted` | INTEGER | `0` | -- | Soft-delete flag; deleted messages are hidden from the UI but kept in the DB |
 | `created_at` | TIMESTAMP | `CURRENT_TIMESTAMP` | -- | When the message was sent |
 
 **Key behaviors:**
 - Messages are queried with `ORDER BY created_at ASC` for display
 - The `since` parameter in the API filters by `id > ?` for incremental polling
 - `attachment_id` was added via migration (not in original schema for existing databases)
-- `is_encrypted` and `signature` are placeholder fields for the crypto CTF challenges
+- `is_deleted` was added via migration; soft-deleted messages are excluded from all queries with `WHERE is_deleted = 0`
+- `is_encrypted` and `signature` are placeholder fields
 
 ---
 
@@ -180,6 +184,7 @@ The schema is defined in `schema.sql` and consists of **12 tables**. Foreign key
 | `mime_type` | TEXT | NULL | -- | MIME type (guessed from filename) |
 | `uploaded_by` | INTEGER | -- | NOT NULL, REFERENCES users(id) | User who uploaded the file |
 | `channel_id` | INTEGER | NULL | REFERENCES channels(id) | Channel the file was uploaded to (NULL for DM/profile uploads) |
+| `conversation_id` | INTEGER | NULL | REFERENCES dm_conversations(id) | DM conversation the file was uploaded to (NULL for channel/profile uploads) |
 | `is_encrypted` | INTEGER | `0` | -- | Whether file is encrypted (placeholder) |
 | `encryption_key_hint` | TEXT | NULL | -- | Hint for encryption key (placeholder) |
 | `created_at` | TIMESTAMP | `CURRENT_TIMESTAMP` | -- | Upload time |
@@ -187,7 +192,8 @@ The schema is defined in `schema.sql` and consists of **12 tables**. Foreign key
 **Key behaviors:**
 - Actual files stored in `UPLOAD_FOLDER` using `stored_filename`
 - Original `filename` preserved for download headers
-- Allowed extensions: `txt, pdf, png, jpg, jpeg, gif, zip, doc, docx`
+- `conversation_id` was added via migration; used for DM attachment access control (only participants of the conversation can download the file)
+- Allowed extensions: `txt, pdf, png, jpg, jpeg, gif, zip, doc, docx, mp4, mp3, webm, ogg, wav, mov, avi, svg, webp, csv, json, xml, pptx, xlsx, sh, py`
 - Max size: 10 MB (enforced by Flask's `MAX_CONTENT_LENGTH`)
 
 ---
@@ -290,6 +296,8 @@ The schema is defined in `schema.sql` and consists of **12 tables**. Foreign key
 | `id` | INTEGER | Auto | PRIMARY KEY AUTOINCREMENT | Unique conversation identifier |
 | `user1_id` | INTEGER | -- | NOT NULL, REFERENCES users(id) | First user (always the lower ID) |
 | `user2_id` | INTEGER | -- | NOT NULL, REFERENCES users(id) | Second user (always the higher ID) |
+| `user1_delete_requested` | INTEGER | `0` | -- | Whether user1 has requested conversation deletion |
+| `user2_delete_requested` | INTEGER | `0` | -- | Whether user2 has requested conversation deletion |
 | `created_at` | TIMESTAMP | `CURRENT_TIMESTAMP` | -- | When conversation was started |
 
 **Constraints:** `UNIQUE(user1_id, user2_id)`
@@ -298,6 +306,8 @@ The schema is defined in `schema.sql` and consists of **12 tables**. Foreign key
 - `user1_id` is always the smaller of the two user IDs (enforced in `routes/dm.py:11`)
 - This ensures only one conversation record exists per user pair
 - Created on-demand via `get_or_create_conversation()` when a user initiates a DM
+- Mutual-consent deletion: a conversation is fully deleted only when both `user1_delete_requested` and `user2_delete_requested` are set to `1`
+- `user1_delete_requested` and `user2_delete_requested` were added via migration
 
 ---
 
@@ -331,12 +341,14 @@ The schema is defined in `schema.sql` and consists of **12 tables**. Foreign key
 | `sender_id` | INTEGER | -- | NOT NULL, REFERENCES users(id) | User who sent the message |
 | `content` | TEXT | `''` | NOT NULL | Message text content |
 | `attachment_id` | INTEGER | NULL | REFERENCES files(id) | Optional file attachment |
+| `is_deleted` | INTEGER | `0` | -- | Soft-delete flag; deleted messages are hidden but kept in the DB |
 | `created_at` | TIMESTAMP | `CURRENT_TIMESTAMP` | -- | When the message was sent |
 
 **Key behaviors:**
 - Structured identically to channel messages but without encryption/signature fields
 - Queried with `ORDER BY created_at ASC`
 - Access controlled: only participants of the conversation can read/write messages
+- `is_deleted` was added via migration; soft-deleted messages are excluded with `WHERE is_deleted = 0`
 
 ---
 
@@ -351,11 +363,17 @@ This approach runs on every startup, making it safe to run the application again
 | 1 | `attachment_id` | `messages` | NULL |
 | 2 | `must_change_password` | `users` | 0 |
 | 3 | `last_activity` | `users` | NULL |
-| 4 | `status` | `password_resets` | 'pending' |
-| 5 | `reviewed_by` | `password_resets` | NULL |
-| 6 | `reviewed_at` | `password_resets` | NULL |
+| 4 | `legacy_password_hash` | `users` | NULL |
+| 5 | `conversation_id` | `files` | NULL |
+| 6 | `is_deleted` | `messages` | 0 |
+| 7 | `is_deleted` | `dm_messages` | 0 |
+| 8 | `user1_delete_requested` | `dm_conversations` | 0 |
+| 9 | `user2_delete_requested` | `dm_conversations` | 0 |
+| 10 | `status` | `password_resets` | 'pending' |
+| 11 | `reviewed_by` | `password_resets` | NULL |
+| 12 | `reviewed_at` | `password_resets` | NULL |
 
-**Special migration behavior:** When `status` is added to `password_resets`, all existing rows are marked as `'legacy'` to prevent them from appearing as pending requests.
+**Special migration behavior:** When `status` is added to `password_resets`, all existing rows are marked as `'legacy'` to prevent them from appearing as pending requests. When `conversation_id` is added to `files`, the migration backfills values by joining against `dm_messages`.
 
 ---
 

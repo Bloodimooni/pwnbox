@@ -12,7 +12,8 @@ This directory contains technical documentation for the PwnBox CTF platform.
 
 ### Application Reference
 - [Architecture Overview](architecture.md) — System design, project structure, and request lifecycle.
-- [Configuration and Deployment](configuration.md) — Configuration classes, environment variables, and Docker setup.
+- [Configuration and Deployment](configuration.md) — Configuration classes, environment variables, Docker image build, and docker-compose stack.
+- [XSS Bot](xss-bot.md) — Puppeteer bot design, cookie encryption, XSS exploitation, and Docker Compose integration.
 
 ### Core Systems
 - [Authentication and Authorization](authentication.md) — Login, registration, sessions, and audit logging.
@@ -127,5 +128,7 @@ pwnbox/
 - **Working on the frontend?** See [Frontend JavaScript](frontend.md) and [Templates](templates.md).
 - **Integrating with the API?** The [REST API Reference](api-reference.md) covers all endpoints.
 - **Database questions?** See [Database Schema](database-schema.md).
+- **Understanding Docker / the image build?** See [Configuration and Deployment](configuration.md).
+- **Understanding the XSS bot?** See [XSS Bot](xss-bot.md).
 - **Solving the CTF?** See [CTF Challenges](ctf-challenges.md) for an overview, or jump straight to the [Full Walkthrough](writeup/ctf-walkthrough.md).
 - **Setting challenge flags or editing challenge content?** See `infra/flags.json`, `database.py` (`_seed_data`), and `entrypoint.py` (`setup_challenge`).

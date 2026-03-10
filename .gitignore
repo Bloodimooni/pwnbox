@@ -6,11 +6,9 @@ uploads/
 logs/
 *.db
 .env
-xor_encode.c
 *.out
 infra/pwnbox-machines
 infra/flags.json
-documentation/writeup
 bot/node_modules
 bot/package-lock.json
-static/challenge/
+

@@ -159,27 +159,61 @@ def stop_container(team):
     run(f"docker rm -f {container_name}", check=False)
 
 
-def start_bot_container(cfg, team):
-    """Start the XSS-bot container alongside a team's corpchat instance."""
-    bot_image  = cfg.get("general", "bot_image_name", fallback="pwnbox-bot")
-    network    = cfg.get("general", "docker_network")
-    app_port   = cfg.get("general", "container_app_port")
-    bot_name   = f"pwnbox-bot-{team}"
-    target_url = f"http://pwnbox-{team}:{app_port}"
+_BOT_TARGETS_FILE = "/tmp/pwnbox-bot-targets.json"
+_BOT_CONTAINER    = "pwnbox-bot"
 
-    # Remove any orphaned bot container first
-    subprocess.run(["docker", "rm", "-f", bot_name], capture_output=True)
+
+def _write_bot_targets(cfg, instances):
+    """Write the targets JSON file consumed by the shared bot container."""
+    app_port = cfg.get("general", "container_app_port")
+    targets = [
+        {
+            "url":        f"http://pwnbox-{team}:{app_port}",
+            "botUser":    "compliancebot",
+            "botPass":    "C0mpl1anceB0t2026",
+            "debugToken": "b3b46de0-86e1-4a98-885d-1a85d2bef561",
+        }
+        for team in instances
+    ]
+    with open(_BOT_TARGETS_FILE, "w") as f:
+        json.dump(targets, f)
+    return targets
+
+
+def refresh_bot(cfg, instances):
+    """Write the targets file and ensure the single shared bot container is running.
+
+    The bot re-reads the targets file on every poll cycle, so adding or removing
+    a team takes effect within one poll interval (60 s) without restarting the bot.
+    If the bot container does not exist yet it is created now.
+    """
+    bot_image = cfg.get("general", "bot_image_name", fallback="pwnbox-bot")
+    network   = cfg.get("general", "docker_network")
+
+    targets = _write_bot_targets(cfg, instances)
+
+    # Check whether the bot container is already running
+    r = subprocess.run(
+        ["docker", "inspect", "--format", "{{.State.Running}}", _BOT_CONTAINER],
+        capture_output=True, text=True
+    )
+    already_running = r.returncode == 0 and r.stdout.strip() == "true"
+
+    if already_running:
+        print(f"  XSS bot:      {_BOT_CONTAINER} (running, targets updated → {len(targets)} instance(s))")
+        return
+
+    # Remove any stopped/dead container with that name before starting fresh
+    subprocess.run(["docker", "rm", "-f", _BOT_CONTAINER], capture_output=True)
 
     result = run(
         f"docker run -d "
-        f"--name {bot_name} "
+        f"--name {_BOT_CONTAINER} "
         f"--network {network} "
-        f"-e TARGET_URL={target_url} "
-        f"-e BOT_USER=compliancebot "
-        f"-e BOT_PASS=C0mpl1anceB0t2026 "
-        f"-e DEBUG_TOKEN=b3b46de0-86e1-4a98-885d-1a85d2bef561 "
+        f"-e TARGETS_FILE=/data/bot_targets.json "
         f"-e POLL_MS=60000 "
         f"-e CHROMIUM_PATH=/usr/bin/chromium "
+        f"-v {_BOT_TARGETS_FILE}:/data/bot_targets.json:ro "
         f"--restart unless-stopped "
         f"{bot_image}",
         check=False
@@ -188,12 +222,14 @@ def start_bot_container(cfg, team):
         print(f"  Warning: XSS bot failed to start (is '{bot_image}' built?)")
         print(f"    Run: docker build -f bot/dockerfile -t {bot_image} bot/")
     else:
-        print(f"  XSS bot:      {bot_name} → {target_url}")
+        print(f"  XSS bot:      {_BOT_CONTAINER} started ({len(targets)} target(s))")
 
 
-def stop_bot_container(team):
-    """Remove the XSS-bot container for a team (best-effort, no error if missing)."""
-    run(f"docker rm -f pwnbox-bot-{team}", check=False)
+def stop_bot_if_no_instances(instances):
+    """Stop the shared bot container when the last instance is removed."""
+    if not instances:
+        subprocess.run(["docker", "rm", "-f", _BOT_CONTAINER], capture_output=True)
+        print(f"  XSS bot:      {_BOT_CONTAINER} stopped (no active instances)")
 
 
 # --- Commands ---
@@ -237,8 +273,8 @@ def cmd_create(cfg, team):
         # Start container (NetBird starts inside automatically)
         start_container(cfg, team, container_ip)
 
-        # Start XSS bot pointed at this team's corpchat instance
-        start_bot_container(cfg, team)
+        # Refresh the shared XSS bot with the updated instance list
+        refresh_bot(cfg, instances | {team: {}})
 
         # Wait for NetBird to register and get its IP
         print(f"  Waiting for NetBird registration...")
@@ -291,10 +327,15 @@ def cmd_destroy(cfg, team):
         # Stop container (also removes NetBird peer when container dies)
         print(f"  Stopping container: {inst['container_name']}")
         stop_container(team)
-        stop_bot_container(team)
 
         del instances[team]
         save_instances(cfg, instances)
+
+        # Update or stop the shared bot
+        if instances:
+            refresh_bot(cfg, instances)
+        else:
+            stop_bot_if_no_instances(instances)
 
     print("  Done.")
 

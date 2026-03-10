@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80">
+  <rect width="80" height="80" rx="40" fill="#e07060"/>
+  <circle cx="40" cy="30" r="13" fill="#f5c5bb"/>
+  <ellipse cx="40" cy="62" rx="18" ry="14" fill="#f5c5bb"/>
+  <text x="40" y="67" font-family="sans-serif" font-size="13" font-weight="700"
+        fill="#e07060" text-anchor="middle">SC</text>
+</svg>

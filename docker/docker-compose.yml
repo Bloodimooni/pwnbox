@@ -27,8 +27,11 @@ services:
     container_name: xss-bot
     depends_on:
       - corpchat
+    # Dev compose: single target via TARGET_URL (no TARGETS_FILE needed).
+    # Production (pwnbox-manager): a single shared container is started with
+    # TARGETS_FILE pointing to /tmp/pwnbox-bot-targets.json (volume-mounted).
     environment:
-      - TARGET_URL=http://corpchat:8080
+      - TARGET_URL=http://corpchat-dev:8080
       - BOT_USER=compliancebot
       - BOT_PASS=C0mpl1anceB0t2026
       - DEBUG_TOKEN=b3b46de0-86e1-4a98-885d-1a85d2bef561

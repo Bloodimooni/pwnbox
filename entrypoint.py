@@ -183,6 +183,15 @@ def setup_challenge():
         os.chmod(admin_dst, 0o755)
         print('[entrypoint] Seeded corpchat-admin to /data/uploads/tools', flush=True)
 
+    # Copy seeded user avatars from the static directory into the uploads folder.
+    # The profile route serves avatars from UPLOAD_FOLDER (/data/uploads), so they must live there.
+    for avatar in ('sarah_avatar.svg', 'bob_avatar.svg'):
+        src = f'/app/static/img/{avatar}'
+        dst = f'/data/uploads/{avatar}'
+        if os.path.isfile(src) and not os.path.exists(dst):
+            shutil.copy2(src, dst)
+            print(f'[entrypoint] Copied avatar {avatar} to /data/uploads', flush=True)
+
     # Write container start time for the chat drip script
     start_file = '/data/container_start'
     if not os.path.exists(start_file):

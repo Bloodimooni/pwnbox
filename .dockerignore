@@ -1,0 +1,36 @@
+# Version control
+.git/
+.gitignore
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Runtime data (mounted as volumes)
+data/
+*.db
+
+# Development tools and docs
+.claude/
+documentation/
+infra/
+CTF_Info.pdf
+challenges-PWNBOX.csv
+README.MD
+
+# Reversing challenge source / encoder (binary compiled at build time)
+reversing-challenge/xor_encode.c
+reversing-challenge/corpchat-admin
+
+# Bot dependencies (installed at bot build time)
+bot/node_modules/
+bot/package-lock.json
+
+# Misc
+*.out
+.env
+run.sh
+setup-host.sh
+ctfrepo.sh

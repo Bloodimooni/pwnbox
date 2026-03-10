@@ -209,7 +209,7 @@ def reset_password_confirm(token):
     reset = db.execute(
         """SELECT pr.*, u.username FROM password_resets pr
            JOIN users u ON pr.user_id = u.id
-           WHERE pr.token = ? AND pr.used = 0 AND pr.status = 'approved'""",
+           WHERE pr.token = ? AND pr.status = 'approved'""",
         (token,)
     ).fetchone()
 
@@ -232,10 +232,7 @@ def reset_password_confirm(token):
             "UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ?",
             (generate_password_hash(password), reset['user_id'])
         )
-        db.execute(
-            "UPDATE password_resets SET used = 1, status = 'used' WHERE token = ?",
-            (token,)
-        )
+        db.execute("DELETE FROM password_resets WHERE token = ?", (token,))
         db.commit()
 
         log_event('password_reset_confirmed', reset['user_id'])

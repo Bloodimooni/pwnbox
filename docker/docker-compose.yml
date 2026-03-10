@@ -14,7 +14,7 @@ services:
       - corpchat_data:/data
     environment:
       - FLASK_CONFIG=config.ProductionConfig
-      - SECRET_KEY=corpchat-dev-secret
+      - SECRET_KEY=7x2K#mP9vL4@qR8nWzY3fB6!sDjE1uA5
       - DATABASE_DIR=/data
       - UPLOAD_FOLDER=/data/uploads
       - LOG_DIR=/data/logs

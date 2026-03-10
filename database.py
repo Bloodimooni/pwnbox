@@ -97,18 +97,10 @@ def _seed_data(db):
     # Default admin user for the admin portal
     db.execute(
         "INSERT INTO admin_users (username, password_hash, privilege_level) VALUES (?, ?, ?)",
-        ('admin', generate_password_hash('admin2026!'), 'superadmin')
+        ('admin', generate_password_hash('K9#mPx2@vL7qRt4!'), 'superadmin')
     )
 
-    # Demo regular user (id=1)
-    demo_token = str(uuid.uuid4())
-    db.execute(
-        "INSERT INTO users (username, email, password_hash, display_name, bio, api_token) VALUES (?, ?, ?, ?, ?, ?)",
-        ('demo', 'demo@corpchat.local', generate_password_hash('demo123'),
-         'Demo User', 'Just a demo account for testing.', demo_token)
-    )
-
-    # CorpChat bot account (id=2)
+    # CorpChat bot account (id=1)
     bot_token = str(uuid.uuid4())
     db.execute(
         "INSERT INTO users (username, email, password_hash, display_name, bio, api_token) VALUES (?, ?, ?, ?, ?, ?)",
@@ -116,7 +108,7 @@ def _seed_data(db):
          'CorpChat Bot', 'Automated assistant for CorpChat.', bot_token)
     )
 
-    # Worker account - sarah_chen (id=3) - her reset token is pre-seeded and discoverable via SQLi
+    # Worker account - sarah_chen (id=2) - her reset token is pre-seeded and discoverable via SQLi
     sarah_token = str(uuid.uuid4())
     db.execute(
         "INSERT INTO users (username, email, password_hash, display_name, bio, api_token, role) VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -124,7 +116,7 @@ def _seed_data(db):
          'Sarah Chen', 'Product Manager. Been here 3 years!', sarah_token, 'user')
     )
 
-    # Manager account - manager_bob (id=4) - has admin role, api_token discoverable via IDOR
+    # Manager account - manager_bob (id=3) - has admin role, api_token discoverable via IDOR
     bob_token = '7f3d9e2a-1b4c-4f8e-a3d7-5c9b0e6f2a1d'
     db.execute(
         "INSERT INTO users (username, email, password_hash, display_name, bio, api_token, role) VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -132,7 +124,7 @@ def _seed_data(db):
          'Bob Manager', 'Senior Manager. Admin access for platform oversight.', bob_token, 'admin')
     )
 
-    # Compliance bot account - compliancebot (id=5)
+    # Compliance bot account - compliancebot (id=4)
     # Puppeteer bot that logs in and reads all DMs every 60s.
     # Its browser session carries the XSS flag cookie (httpOnly=false).
     compliancebot_token = str(uuid.uuid4())
@@ -191,39 +183,39 @@ def _seed_data(db):
     # Seed message in #random
     db.execute(
         "INSERT INTO messages (channel_id, user_id, content) VALUES (?, ?, ?)",
-        (3, 1, 'Anyone else think the coffee machine on floor 3 is broken? It keeps making espresso instead of regular.')
+        (3, 3, 'Anyone else think the coffee machine on floor 3 is broken? It keeps making espresso instead of regular.')
     )
     db.execute(
         "INSERT INTO messages (channel_id, user_id, content) VALUES (?, ?, ?)",
         (3, 3, 'Haha yes! I reported it. Facilities said they\'d look at it next week.')
     )
 
-    # Pre-seed sarah_chen's password reset token (id=3 is sarah_chen)
+    # Pre-seed sarah_chen's password reset token (id=2 is sarah_chen)
     # This token is discoverable via SQL injection on the search endpoint
     sarah_reset_token = 'a3f8c2e1b4d7f9a0c5e2b8d4f1a6c3e7'
     db.execute(
         "INSERT INTO password_resets (user_id, token, status) VALUES (?, ?, 'approved')",
-        (3, sarah_reset_token)
+        (2, sarah_reset_token)
     )
 
-    # Seed DM conversation between chatbot (id=2) and manager_bob (id=4)
+    # Seed DM conversation between chatbot (id=1) and manager_bob (id=3)
     # The Stage 3 flag is in this conversation - only accessible after IDOR + token-login escalation
     db.execute(
         "INSERT INTO dm_conversations (user1_id, user2_id) VALUES (?, ?)",
-        (2, 4)
+        (1, 3)
     )
     # conversation id=1
     db.execute(
         "INSERT INTO dm_messages (conversation_id, sender_id, content) VALUES (?, ?, ?)",
-        (1, 2, "Hi Bob, automated security report for Q4. Confidential access key for the audit portal: CTF{idor_token_auth_bypass_privesc_complete}")
+        (1, 1, "Hi Bob, automated security report for Q4. Confidential access key for the audit portal: CTF{idor_token_auth_bypass_privesc_complete}")
     )
     db.execute(
         "INSERT INTO dm_messages (conversation_id, sender_id, content) VALUES (?, ?, ?)",
-        (1, 4, "Thanks! I'll review this. Make sure this stays between us - this is sensitive.")
+        (1, 3, "Thanks! I'll review this. Make sure this stays between us - this is sensitive.")
     )
     db.execute(
         "INSERT INTO dm_messages (conversation_id, sender_id, content) VALUES (?, ?, ?)",
-        (1, 2, "One more thing: the compliance monitoring bot (username: compliancebot) went live this week. "
+        (1, 1, "One more thing: the compliance monitoring bot (username: compliancebot) went live this week. "
                "It automatically reads every DM conversation every 60 seconds to check for policy violations. "
                "Heads up: I flagged a potential issue to the dev team - the DM renderer passes message content "
                "directly to the browser without sanitization. Could be worth looking at before the audit.")
@@ -238,7 +230,6 @@ def _seed_data(db):
         return hashlib.md5(b64.encode()).hexdigest()
 
     legacy_passwords = {
-        'demo':        ('demo123',                              None),
         'chatbot':     ('bot12345',                             None),
         'sarah_chen':  ('sarah2024!',                           None),
         'manager_bob': ('b0bM@nager2024!',                      None),

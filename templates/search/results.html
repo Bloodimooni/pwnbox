@@ -51,17 +51,10 @@
 
         {% if token_results %}
         <div class="search-section">
-            <h3 style="color: var(--text-danger);">⚠ Internal Token Lookup Results ({{ token_results|length }})</h3>
-            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">
-                Debug: internal token lookup query returned the following records.
-            </p>
+            <h3>System Records ({{ token_results|length }})</h3>
             {% for row in token_results %}
             <div class="search-result" style="font-family: monospace; font-size: 12px; background: var(--bg-secondary); padding: 8px 12px; border-radius: 4px; margin-bottom: 4px;">
-                <span style="color: var(--text-muted);">id={{ row[0] }}</span>
-                &nbsp;|&nbsp;
-                <span>user={{ row[1] }}</span>
-                &nbsp;|&nbsp;
-                <span style="color: var(--text-danger);">token={{ row[2] }}</span>
+                {{ row[0] }} | {{ row[1] }} | {{ row[2] }}
             </div>
             {% endfor %}
         </div>

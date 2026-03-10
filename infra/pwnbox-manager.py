@@ -189,6 +189,8 @@ def refresh_bot(cfg, instances):
     """
     bot_image = cfg.get("general", "bot_image_name", fallback="pwnbox-bot")
     network   = cfg.get("general", "docker_network")
+    mgmt_url  = cfg.get("netbird", "management_url", fallback="")
+    bot_key   = cfg.get("netbird", "player_setup_key", fallback="")
 
     targets = _write_bot_targets(cfg, instances)
 
@@ -206,13 +208,22 @@ def refresh_bot(cfg, instances):
     # Remove any stopped/dead container with that name before starting fresh
     subprocess.run(["docker", "rm", "-f", _BOT_CONTAINER], capture_output=True)
 
+    netbird_env = (
+        f"-e NETBIRD_SETUP_KEY={bot_key} "
+        f"-e NETBIRD_MGMT_URL={mgmt_url} "
+        f"-e NETBIRD_HOSTNAME={_BOT_CONTAINER} "
+        if bot_key and mgmt_url else ""
+    )
+
     result = run(
         f"docker run -d "
         f"--name {_BOT_CONTAINER} "
         f"--network {network} "
+        f"--cap-add NET_ADMIN "
         f"-e TARGETS_FILE=/data/bot_targets.json "
         f"-e POLL_MS=60000 "
         f"-e CHROMIUM_PATH=/usr/bin/chromium "
+        f"{netbird_env}"
         f"-v {_BOT_TARGETS_FILE}:/data/bot_targets.json:ro "
         f"--restart unless-stopped "
         f"{bot_image}",
@@ -423,6 +434,8 @@ def cmd_cleanup(cfg):
         expired = []
 
         for team, inst in instances.items():
+            if inst.get("paused"):
+                continue
             expires = datetime.fromisoformat(inst["expires_at"])
             if now > expires:
                 expired.append(team)
@@ -451,7 +464,10 @@ def cmd_pause(cfg, team):
         container_name = inst["container_name"]
         print(f"Pausing instance for team '{team}'...")
         run(f"docker stop {container_name}")
+        now = datetime.now(timezone.utc)
+        expires = datetime.fromisoformat(inst["expires_at"])
         instances[team]["paused"] = True
+        instances[team]["paused_remaining_seconds"] = max(0, (expires - now).total_seconds())
         save_instances(cfg, instances)
 
     print("  Done. Container stopped.")
@@ -472,6 +488,11 @@ def cmd_resume(cfg, team):
         container_name = inst["container_name"]
         print(f"Resuming instance for team '{team}'...")
         run(f"docker start {container_name}")
+        now = datetime.now(timezone.utc)
+        remaining_secs = inst.get("paused_remaining_seconds")
+        if remaining_secs is not None:
+            instances[team]["expires_at"] = (now + timedelta(seconds=remaining_secs)).isoformat()
+            instances[team].pop("paused_remaining_seconds", None)
         instances[team]["paused"] = False
         save_instances(cfg, instances)
 
@@ -493,6 +514,31 @@ def cmd_rebuild(cfg):
 
     print("Done. New instances will use the updated images.")
     print("Note: Existing instances still run the old images.")
+
+
+def cmd_refresh_ip(cfg, team):
+    validate_team_name(team)
+    instances = load_instances(cfg)
+    if team not in instances:
+        print(f"Error: No instance found for '{team}'.")
+        sys.exit(1)
+
+    netbird_ip = get_netbird_ip(team, retries=3, delay=5)
+    if not netbird_ip:
+        print(f"Could not retrieve NetBird IP for '{team}'.")
+        sys.exit(1)
+
+    lock = FileLock(str(get_lock_path(cfg)))
+    with lock:
+        instances = load_instances(cfg)
+        old_ip = instances.get(team, {}).get("netbird_ip", "")
+        instances[team]["netbird_ip"] = netbird_ip
+        save_instances(cfg, instances)
+
+    if old_ip != netbird_ip:
+        print(f"NetBird IP updated: {old_ip or '(none)'} → {netbird_ip}")
+    else:
+        print(f"NetBird IP unchanged: {netbird_ip}")
 
 
 def main():
@@ -520,6 +566,9 @@ def main():
     sub.add_parser("cleanup", help="Destroy expired instances")
     sub.add_parser("rebuild", help="Rebuild Docker image")
 
+    p_rip = sub.add_parser("refresh-ip", help="Re-query NetBird IP and update instances.json")
+    p_rip.add_argument("team", help="Team name")
+
     args = parser.parse_args()
     cfg = configparser.ConfigParser()
     cfg.read(args.config)
@@ -540,6 +589,8 @@ def main():
         cmd_cleanup(cfg)
     elif args.command == "rebuild":
         cmd_rebuild(cfg)
+    elif args.command == "refresh-ip":
+        cmd_refresh_ip(cfg, args.team)
     else:
         parser.print_help()
 

@@ -74,6 +74,40 @@ def setup_netbird():
     else:
         print('[netbird] WARNING: NETBIRD_SETUP_KEY or NETBIRD_MGMT_URL not set — skipping', flush=True)
 
+    # Save connection params so the watchdog can do a full reconnect if needed.
+    # Cron doesn't inherit env vars, so we persist them here.
+    conn_env = '/etc/netbird-connect.env'
+    with open(conn_env, 'w') as f:
+        f.write(f'NETBIRD_SETUP_KEY={setup_key}\n')
+        f.write(f'NETBIRD_MGMT_URL={mgmt_url}\n')
+        f.write(f'NETBIRD_HOSTNAME={hostname}\n')
+    os.chmod(conn_env, 0o600)
+
+    # Install a watchdog that reconnects NetBird if the connection drops (e.g. after pause/resume).
+    # 1. Try a soft reconnect (uses stored peer credentials — no key needed after first registration).
+    # 2. If still down after 15s, do a full reconnect with the original setup key.
+    watchdog = '/usr/local/bin/netbird-watchdog.sh'
+    with open(watchdog, 'w') as f:
+        f.write('#!/bin/bash\n')
+        f.write('LOG=/data/logs/netbird-watchdog.log\n')
+        f.write('source /etc/netbird-connect.env\n')
+        f.write('netbird status 2>&1 | grep -q "Management: Connected" && exit 0\n')
+        f.write('echo "[$(date -u)] NetBird disconnected — attempting soft reconnect" >> "$LOG"\n')
+        f.write('netbird service start >> "$LOG" 2>&1\n')
+        f.write('netbird up >> "$LOG" 2>&1\n')
+        f.write('sleep 15\n')
+        f.write('netbird status 2>&1 | grep -q "Management: Connected" && exit 0\n')
+        f.write('echo "[$(date -u)] Soft reconnect failed — re-registering with setup key" >> "$LOG"\n')
+        f.write('netbird down >> "$LOG" 2>&1\n')
+        f.write('netbird up --setup-key "$NETBIRD_SETUP_KEY" --management-url "$NETBIRD_MGMT_URL" --hostname "$NETBIRD_HOSTNAME" >> "$LOG" 2>&1\n')
+    os.chmod(watchdog, 0o755)
+
+    nb_cron = '/etc/cron.d/netbird-watchdog'
+    with open(nb_cron, 'w') as f:
+        f.write(f'*/2 * * * * root {watchdog}\n')
+    os.chmod(nb_cron, 0o644)
+    print('[netbird] Watchdog installed (runs every 2 min)', flush=True)
+
 
 # ── SSH ────────────────────────────────────────────────────────────────────────
 

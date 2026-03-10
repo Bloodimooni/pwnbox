@@ -114,6 +114,16 @@
         .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
         .btn-sm { padding: 6px 12px; font-size: 12px; }
         .btn-block { width: 100%; justify-content: center; }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        @keyframes btn-spin { to { transform: rotate(360deg); } }
+        .btn-spinner {
+            display: inline-block;
+            width: 12px; height: 12px;
+            border: 2px solid currentColor;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: btn-spin 0.6s linear infinite;
+        }
         .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
         /* Alert */
         .alert {
@@ -419,7 +429,7 @@
                 <div id="instance-info" style="display: none;">
                     <div class="info-grid">
                         <div class="info-item">
-                            <label>NetBird IP</label>
+                            <label>NetBird IP <button id="refresh-ip-btn" class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:11px;margin-left:6px;display:none" onclick="refreshIp(this)">&#x21bb; Refresh</button></label>
                             <div class="value" id="inst-ip"></div>
                         </div>
                         <div class="info-item">
@@ -695,7 +705,9 @@ function renderInstance(inst, captain, cooldown) {
     const appUrl = ip !== 'pending' ? `http://${ip}:${inst.app_port}` : 'pending';
 
     document.getElementById('inst-ip').textContent = ip;
-    document.getElementById('inst-url').textContent = appUrl;
+    const urlEl = document.getElementById('inst-url');
+    urlEl.textContent = appUrl;
+    urlEl.dataset.port = inst.app_port;
 
     let statusBadge;
     if (inst.paused) {
@@ -719,16 +731,19 @@ function renderInstance(inst, captain, cooldown) {
 
     // Captain actions
     const actions = document.getElementById('instance-actions');
+    const refreshBtn = document.getElementById('refresh-ip-btn');
     if (captain) {
+        refreshBtn.style.display = '';
         let btns = `<button class="btn btn-outline btn-sm" onclick="navigator.clipboard.writeText('${esc(setupCmd)}')">Copy Setup Command</button>`;
         if (inst.paused) {
-            btns += `<button class="btn btn-success btn-sm" onclick="instanceAction('resume')">Resume</button>`;
+            btns += `<button class="btn btn-success btn-sm" onclick="instanceAction('resume',this)">Resume</button>`;
         } else if (!inst.expired) {
-            btns += `<button class="btn btn-warning btn-sm" onclick="instanceAction('pause')">Pause</button>`;
+            btns += `<button class="btn btn-warning btn-sm" onclick="instanceAction('pause',this)">Pause</button>`;
         }
-        btns += `<button class="btn btn-danger btn-sm" style="margin-left:auto;" onclick="instanceAction('destroy')">Destroy</button>`;
+        btns += `<button class="btn btn-danger btn-sm" style="margin-left:auto;" onclick="instanceAction('destroy',this)">Destroy</button>`;
         actions.innerHTML = btns;
     } else {
+        refreshBtn.style.display = 'none';
         actions.innerHTML = '';
     }
 }
@@ -798,17 +813,48 @@ async function launchInstance() {
     }, 1000);
 }
 
-async function instanceAction(action) {
+async function instanceAction(action, btn) {
     if (action === 'destroy' && !confirm('Destroy your team\'s instance? You wont be able to launch another instance for 60 minutes.')) return;
     const errEl = document.getElementById('instance-error');
     errEl.classList.remove('show');
+    // Show loading state on the clicked button
+    if (btn) {
+        btn.disabled = true;
+        btn.dataset.label = btn.textContent;
+        btn.innerHTML = `<span class="btn-spinner"></span>${btn.dataset.label}`;
+    }
     try {
         await api(`/api/instance/${action}`, {method: 'POST'});
         refreshDashboard();
+        // After resume, auto-refresh the IP since NetBird reconnects asynchronously
+        if (action === 'resume') refreshIp();
     } catch (e) {
         errEl.textContent = e.message;
         errEl.classList.add('show');
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = btn.dataset.label;
+        }
     }
+}
+
+async function refreshIp(btn) {
+    const ipEl = document.getElementById('inst-ip');
+    const urlEl = document.getElementById('inst-url');
+    const refreshBtn = document.getElementById('refresh-ip-btn');
+    const origLabel = refreshBtn.textContent;
+    refreshBtn.disabled = true;
+    refreshBtn.innerHTML = '<span class="btn-spinner"></span>';
+    try {
+        const data = await api('/api/instance/refresh-ip', {method: 'POST'});
+        if (data.netbird_ip) {
+            ipEl.textContent = data.netbird_ip;
+            const instPort = urlEl.dataset.port || '8080';
+            urlEl.textContent = `http://${data.netbird_ip}:${instPort}`;
+        }
+    } catch (e) { /* silently ignore */ }
+    refreshBtn.disabled = false;
+    refreshBtn.textContent = origLabel;
 }
 
 // --- Teams ---

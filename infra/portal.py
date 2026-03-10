@@ -389,16 +389,20 @@ def api_team_info():
     instance_info = None
     if instance:
         cfg = load_config()
-        expires = datetime.fromisoformat(instance["expires_at"])
+        paused = instance.get("paused", False)
         now = datetime.now(timezone.utc)
-        remaining = (expires - now).total_seconds()
+        if paused and instance.get("paused_remaining_seconds") is not None:
+            remaining = instance["paused_remaining_seconds"]
+        else:
+            expires = datetime.fromisoformat(instance["expires_at"])
+            remaining = (expires - now).total_seconds()
         instance_info = {
             "container_ip": instance["container_ip"],
             "netbird_ip": instance.get("netbird_ip", ""),
             "expires_at": instance["expires_at"],
             "remaining_minutes": max(0, int(remaining / 60)),
             "expired": remaining <= 0,
-            "paused": instance.get("paused", False),
+            "paused": paused,
             "app_port": cfg.get("general", "container_app_port"),
             "netbird_setup_key": cfg.get("netbird", "player_setup_key"),
             "netbird_management_url": cfg.get("netbird", "management_url"),
@@ -552,6 +556,18 @@ def api_instance_resume():
     return jsonify({"status": "ok"})
 
 
+@app.route("/api/instance/refresh-ip", methods=["POST"])
+@captain_required
+def api_instance_refresh_ip():
+    team_name = session["team"]
+    code, stdout, stderr = run_manager("refresh-ip", team_name)
+    if code != 0:
+        return jsonify({"error": stderr.strip() or stdout.strip()}), 400
+    instances = load_instances()
+    netbird_ip = instances.get(team_name, {}).get("netbird_ip", "")
+    return jsonify({"netbird_ip": netbird_ip})
+
+
 # --- Scoring ---
 
 def calculate_flag_score(team_name):
@@ -695,8 +711,12 @@ def api_admin_overview():
 
         inst_info = None
         if instance:
-            expires = datetime.fromisoformat(instance["expires_at"])
-            remaining = (expires - now).total_seconds()
+            paused = instance.get("paused", False)
+            if paused and instance.get("paused_remaining_seconds") is not None:
+                remaining = instance["paused_remaining_seconds"]
+            else:
+                expires = datetime.fromisoformat(instance["expires_at"])
+                remaining = (expires - now).total_seconds()
             cfg = load_config()
             inst_info = {
                 "netbird_ip": instance.get("netbird_ip", ""),
@@ -705,7 +725,7 @@ def api_admin_overview():
                 "remaining_seconds": max(0, int(remaining)),
                 "remaining_minutes": max(0, int(remaining / 60)),
                 "expired": remaining <= 0,
-                "paused": instance.get("paused", False),
+                "paused": paused,
                 "app_port": cfg.get("general", "container_app_port"),
             }
 

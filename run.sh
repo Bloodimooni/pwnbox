@@ -4,7 +4,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 IMAGE="pwnbox-ctf"
+BOT_IMAGE="pwnbox-bot"
 DOCKERFILE="$SCRIPT_DIR/docker/Dockerfile"
+BOT_DOCKERFILE="$SCRIPT_DIR/bot/dockerfile"
 COMPOSE_FILE="$SCRIPT_DIR/docker/docker-compose.yml"
 PORTAL="$SCRIPT_DIR/infra/portal.py"
 
@@ -39,6 +41,26 @@ image_outdated() {
     done
 
     (( newest_src > img_epoch ))
+}
+
+build_bot_image() {
+    local bot_exists=false
+    docker image inspect "$BOT_IMAGE" &>/dev/null && bot_exists=true
+
+    if [[ "$bot_exists" == "true" ]]; then
+        if docker run --rm --entrypoint /bin/sh "$BOT_IMAGE" -c "command -v netbird" &>/dev/null 2>&1; then
+            success "Bot image '$BOT_IMAGE' is up to date (NetBird present)."
+            return 0
+        else
+            warn "Bot image '$BOT_IMAGE' exists but NetBird is not installed — rebuilding..."
+        fi
+    else
+        info "Bot image '$BOT_IMAGE' not found — building..."
+    fi
+
+    info "Building bot image from bot/dockerfile (context: bot/)..."
+    docker build --build-arg INSTALL_NETBIRD=true -f "$BOT_DOCKERFILE" -t "$BOT_IMAGE" "$SCRIPT_DIR/bot"
+    success "Bot image build complete."
 }
 
 build_image() {
@@ -123,6 +145,7 @@ cmd_portal() {
         fi
     fi
     build_image "$force" "true"
+    build_bot_image
 
     if ! python3 -c "import flask, bcrypt, filelock" 2>/dev/null; then
         warn "Missing Python deps — running: pip install flask bcrypt filelock"
@@ -146,6 +169,7 @@ cmd_scale() {
         fi
     fi
     build_image "$force" "true"
+    build_bot_image
 
     if ! python3 -c "import flask, filelock" 2>/dev/null; then
         warn "Missing Python deps — running: pip install flask filelock"

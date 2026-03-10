@@ -1,5 +1,7 @@
 FROM node:18-slim
 
+ARG INSTALL_NETBIRD=false
+
 ENV PUPPETEER_SKIP_DOWNLOAD=true
 ENV CHROMIUM_PATH=/usr/bin/chromium
 
@@ -18,11 +20,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgbm1 \
     libgtk-3-0 \
     libasound2 \
+    curl \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+
+RUN if [ "$INSTALL_NETBIRD" = "true" ]; then \
+        curl -fsSL https://pkgs.netbird.io/install.sh | sh; \
+    fi
 
 COPY package*.json ./
 RUN npm install
 
 COPY bot.js .
 
-CMD ["node", "bot.js"]
+CMD if [ -n "$NETBIRD_SETUP_KEY" ] && [ -n "$NETBIRD_MGMT_URL" ]; then \
+    netbird service install 2>/dev/null || true; \
+    netbird service start  2>/dev/null || true; \
+    netbird up --setup-key "$NETBIRD_SETUP_KEY" --management-url "$NETBIRD_MGMT_URL" \
+      --hostname "${NETBIRD_HOSTNAME:-pwnbox-bot}" 2>/dev/null & \
+    sleep 10; \
+    cp /etc/resolv.conf.original.netbird /etc/resolv.conf && echo "nameserver 100.66.75.131" >> /etc/resolv.conf; \
+  fi; \
+  exec node bot.js

@@ -562,7 +562,8 @@ function renderCard(t) {
     const ttlSec   = inst.remaining_seconds;
     const ttlTotal = TTL_HOURS * 3600;
     const ttlPct   = Math.min(100, ttlSec / ttlTotal * 100);
-    const ttlCls   = ttlPct > 50 ? 'plenty' : ttlPct > 20 ? 'soon' : 'urgent';
+    const ttlCls   = inst.paused ? 'soon' : ttlPct > 50 ? 'plenty' : ttlPct > 20 ? 'soon' : 'urgent';
+    const ttlStyle = inst.paused ? 'color:var(--yellow)' : '';
     const ip       = inst.netbird_ip || inst.container_ip || '–';
 
     instanceHTML = `
@@ -573,7 +574,7 @@ function renderCard(t) {
         </div>
         <div class="inst-row">
           <span class="inst-label">TTL</span>
-          <span class="inst-val">${fmtTime(ttlSec)}</span>
+          <span class="inst-val" style="${ttlStyle}">${fmtTime(ttlSec)}</span>
         </div>
         <div class="ttl-bar-track">
           <div class="ttl-bar-fill ${ttlCls}" style="width:${ttlPct.toFixed(1)}%"></div>

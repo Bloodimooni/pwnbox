@@ -106,6 +106,13 @@ def setup_cron():
     else:
         print(f"[cron] WARNING: cron failed: {r.stderr.strip()}", flush=True)
 
+    drip_cron = '/etc/cron.d/corpchat-drip'
+    if not os.path.exists(drip_cron):
+        with open(drip_cron, 'w') as f:
+            f.write('*/3 * * * * corpchat python /app/chat_drip.py >> /data/logs/drip.log 2>&1\n')
+        os.chmod(drip_cron, 0o644)
+        print('[cron] Drip cron installed', flush=True)
+
 
 # ── System user ────────────────────────────────────────────────────────────────
 
@@ -175,6 +182,13 @@ def setup_challenge():
         shutil.copy2(admin_src, admin_dst)
         os.chmod(admin_dst, 0o755)
         print('[entrypoint] Seeded corpchat-admin to /data/uploads/tools', flush=True)
+
+    # Write container start time for the chat drip script
+    start_file = '/data/container_start'
+    if not os.path.exists(start_file):
+        with open(start_file, 'w') as f:
+            f.write(str(time.time()))
+        print('[entrypoint] Container start time written', flush=True)
 
 
 # ── Privilege drop ─────────────────────────────────────────────────────────────

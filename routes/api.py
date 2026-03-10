@@ -831,10 +831,6 @@ def crypto_encrypt():
         return jsonify({"error": "Data field required"}), 400
 
     plaintext = data['data']
-    # VULNERABILITY: single-byte XOR cipher with a time-based key.
-    # The key is derived from the current UTC hour — it rotates every 60 minutes.
-    # An attacker can recover the key via a chosen-plaintext attack:
-    #   encrypt a known string (e.g. null bytes) at the same hour → XOR with ciphertext → plaintext.
     key_byte = int(time.time() // 3600) & 0xFF
     encrypted_bytes = bytes(b ^ key_byte for b in plaintext.encode())
     encrypted = base64.b64encode(encrypted_bytes).decode()
@@ -851,9 +847,7 @@ def crypto_encrypt():
 @api_bp.route('/files/download/<path:filename>')
 @debug_auth_required
 def download_file(filename):
-    """Debug-only endpoint to retrieve files from the upload directory.
-    Only accessible with the internal debug API token.
-    """
+
     from flask import send_file
     upload_folder = current_app.config.get('UPLOAD_FOLDER', '/data/uploads')
     safe_path = os.path.realpath(os.path.join(upload_folder, filename))

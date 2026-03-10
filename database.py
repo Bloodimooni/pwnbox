@@ -148,46 +148,276 @@ def _seed_data(db):
         ('random', 'Off-topic chat and fun stuff', 1)
     )
 
-    # Seed messages in #general
+    # Historical messages — Day -14 (Monday morning)
     db.execute(
-        "INSERT INTO messages (channel_id, user_id, content) VALUES (?, ?, ?)",
-        (1, 1, 'Welcome to CorpChat! This is the general channel.')
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (1, 1, 'Good morning everyone! New week starts now. Reminder: Q4 planning season is officially open.', '-14 days -118 minutes')
     )
     db.execute(
-        "INSERT INTO messages (channel_id, user_id, content) VALUES (?, ?, ?)",
-        (1, 2, 'Hello everyone! The new chat system is live. Feel free to explore the channels.')
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (1, 2, 'Morning \U0001f634 VPN is down for me again, anyone else?', '-14 days -112 minutes')
     )
     db.execute(
-        "INSERT INTO messages (channel_id, user_id, content) VALUES (?, ?, ?)",
-        (1, 3, "Hey team! Quick heads-up - I'm locked out of my account and had to submit a password reset. Waiting for the token to come through to my email. Anyone know how long IT usually takes?")
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (1, 3, 'Works fine on my end. Try restarting the NetBird client.', '-14 days -109 minutes')
     )
     db.execute(
-        "INSERT INTO messages (channel_id, user_id, content) VALUES (?, ?, ?)",
-        (1, 4, "Hi Sarah! IT is a bit slow this week. Shouldn't be more than a day. Hang tight!")
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (1, 2, 'Nope still nothing. IT ticket submitted. Classic Monday.', '-14 days -104 minutes')
     )
     db.execute(
-        "INSERT INTO messages (channel_id, user_id, content) VALUES (?, ?, ?)",
-        (1, 3, "Thanks Bob! I'll keep checking my inbox. Really need to get back in, I have reports due 😅")
-    )
-
-    # Seed message in #announcements
-    db.execute(
-        "INSERT INTO messages (channel_id, user_id, content) VALUES (?, ?, ?)",
-        (2, 2, 'System maintenance scheduled for this weekend. Please save your work.')
-    )
-    db.execute(
-        "INSERT INTO messages (channel_id, user_id, content) VALUES (?, ?, ?)",
-        (2, 4, 'Reminder: Q4 security audit is coming up. All managers please review access logs.')
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (3, 2, 'Okay who used the last of the ground coffee and put the empty bag BACK in the cupboard. I will find you.', '-14 days -97 minutes')
     )
 
-    # Seed message in #random
+    # Historical messages — Day -13 (Tuesday)
     db.execute(
-        "INSERT INTO messages (channel_id, user_id, content) VALUES (?, ?, ?)",
-        (3, 3, 'Anyone else think the coffee machine on floor 3 is broken? It keeps making espresso instead of regular.')
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (2, 1, 'Q4 security audit begins in two weeks. All managers: please review team access permissions and submit the compliance checklist.', '-13 days -115 minutes')
     )
     db.execute(
-        "INSERT INTO messages (channel_id, user_id, content) VALUES (?, ?, ?)",
-        (3, 3, 'Haha yes! I reported it. Facilities said they\'d look at it next week.')
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (1, 3, 'Team standup moved to 9:30 today. Updated invite sent.', '-13 days -108 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (1, 2, 'ty, i was already in the old slot staring at an empty room', '-13 days -103 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (3, 3, 'Fun fact: CorpChat as a platform is now 5 years old this month \U0001f382', '-13 days -82 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (3, 2, "Fun fact: I've filed 52 bug reports in those 5 years and exactly 4 have been closed.", '-13 days -76 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (3, 3, 'Some of those were duplicates, Sarah.', '-13 days -71 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (3, 2, 'they were not bob', '-13 days -68 minutes')
+    )
+
+    # Historical messages — Day -12 (Wednesday)
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (1, 2, 'Anyone else getting 403 on the old reporting portal? Need Q3 exports.', '-12 days -110 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (1, 3, 'That portal was deprecated last quarter. Use the new dashboard \u2014 sending link now.', '-12 days -105 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (1, 2, 'the link you sent is also a 403, bob', '-12 days -101 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (1, 1, 'Automated notice: scheduled maintenance on the backup server tonight 22:00\u2013midnight. Expect brief downtime.', '-12 days -88 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (3, 2, "'Brief' downtime. Last time 'brief' was 4 hours. I am logging this.", '-12 days -84 minutes')
+    )
+
+    # Historical messages — Day -11 (Thursday)
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (3, 2, "bob just sent me a calendar invite titled 'Quick 15-min sync'. it is 90 minutes long.", '-11 days -107 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (3, 3, "There's a lot to cover.", '-11 days -102 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (3, 2, "there's always a lot to cover, bob", '-11 days -98 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (1, 1, 'Maintenance complete. All systems operational.', '-11 days -79 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (1, 2, 'oh NOW it works. beautiful timing.', '-11 days -74 minutes')
+    )
+
+    # Historical messages — Day -10 (Friday)
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (3, 2, 'TGIF \U0001f389 running on caffeine and spite', '-10 days -116 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (1, 3, 'Great week team. Q4 goal-setting forms are due Monday. Links in your inboxes.', '-10 days -62 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (3, 2, 'bob it is 4:58pm on a friday', '-10 days -58 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (3, 3, 'Just a friendly reminder!', '-10 days -55 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (3, 2, 'this is fine \U0001f525 everything is fine \U0001f525\U0001f525', '-10 days -52 minutes')
+    )
+
+    # Historical messages — Day -7 (Monday)
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (1, 2, 'Good morning! New week, new me, same backlog \U0001f4aa', '-7 days -118 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (1, 3, "Morning all! Q4 audit prep kick-off meeting is on your calendars for 2pm. It'll be 3 hours but there's a lot of ground to cover.", '-7 days -112 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (1, 2, 'bob. 3 hours.', '-7 days -107 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (1, 3, 'We can split it into two sessions if needed.', '-7 days -103 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (1, 2, '...or we could just send a document', '-7 days -99 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (2, 3, 'All staff: please ensure access logs are up to date before the security review. See the Q4 checklist in the admin portal.', '-7 days -76 minutes')
+    )
+
+    # Historical messages — Day -6 (Tuesday)
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (3, 2, 'hot take: standups should be 10 minutes max. not 45. just 10.', '-6 days -113 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (3, 3, 'Complex blockers sometimes need more discussion time.', '-6 days -108 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (3, 2, 'then SCHEDULE A SEPARATE MEETING BOB', '-6 days -103 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (1, 2, "side note \u2014 has anyone else noticed the search returning weird results? like extra rows that feel off", '-6 days -88 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (1, 3, 'What do you mean? What are you searching for?', '-6 days -83 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (1, 2, "doesn't matter, probably a display bug. logging a ticket.", '-6 days -79 minutes')
+    )
+
+    # Historical messages — Day -5 (Wednesday)
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (2, 1, 'System update: the automated compliance monitoring bot (username: compliancebot) is now active. It reviews all DM conversations for policy compliance. Any issues, contact your line manager.', '-5 days -109 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (1, 2, 'hold on. a bot is reading all our DMs?', '-5 days -103 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (1, 3, "It's standard compliance practice. It's automated.", '-5 days -98 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (1, 2, "totally normal. 100% fine. I'm fine.", '-5 days -93 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (3, 2, "need a meme break. someone describe the funniest thing that happened to them this week. I'll start: I sent a P1 incident alert to the wrong Slack. the other company's ops team responded faster than ours.", '-5 days -77 minutes')
+    )
+
+    # Historical messages — Day -4 (Thursday)
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (3, 2, "IT just remote-desktopped into my machine without telling me. I watched my mouse wander around for 10 minutes while I was on a call.", '-4 days -106 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (3, 3, 'Standard support procedure.', '-4 days -101 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (3, 2, "it opened Notepad, typed nothing, and closed it. what was it doing.", '-4 days -97 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (3, 3, 'Diagnostics.', '-4 days -93 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (3, 2, "bob that's not what diagnostics means", '-4 days -89 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (1, 1, 'Reminder: the corpchat-admin binary has been placed in the uploads/tools directory for the ops team evaluation. Internal use only.', '-4 days -74 minutes')
+    )
+
+    # Historical messages — Day -3 (Monday)
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (1, 3, "Team \u2014 heads-up that I need to submit a password reset request. Having some login issues. Waiting on the token.", '-3 days -112 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (1, 2, "IT is a bit backed up this week. Hang tight, shouldn't be more than a day or two.", '-3 days -106 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (1, 3, "Thanks! I'll keep checking. Have a presentation at 10, really need access back.", '-3 days -102 minutes')
+    )
+
+    # Historical messages — Day -2 (Tuesday)
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (3, 2, 'okay current status: 3 PRs open, 2 meetings conflicting, 1 coffee spilled on keyboard, 0 regrets', '-2 days -108 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (3, 3, 'Are you okay?', '-2 days -103 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (3, 2, 'I am THRIVING bob', '-2 days -99 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (1, 1, 'Automated: weekly backup completed. 847 files archived.', '-2 days -84 minutes')
+    )
+
+    # Historical messages — Day -1 (Wednesday, yesterday)
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (1, 3, "Morning all! Quick reminder about the security audit \u2014 it includes a review of API access tokens. Please check your tokens haven't been shared anywhere.", '-1 days -118 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (1, 2, 'noted! btw is anyone else finding the search results page a bit... chatty? might be worth a look', '-1 days -112 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (3, 2, 'anyway. coffee machine on floor 3 is making espresso when you ask for americano. this is either a bug or a feature.', '-1 days -97 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (3, 3, 'Facilities has been notified.', '-1 days -92 minutes')
+    )
+    db.execute(
+        "INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now', ?))",
+        (3, 2, "it's been 'notified' for 2 weeks bob", '-1 days -88 minutes')
     )
 
     # Pre-seed sarah_chen's password reset token (id=2 is sarah_chen)
@@ -219,6 +449,19 @@ def _seed_data(db):
                "It automatically reads every DM conversation every 60 seconds to check for policy violations. "
                "Heads up: I flagged a potential issue to the dev team - the DM renderer passes message content "
                "directly to the browser without sanitization. Could be worth looking at before the audit.")
+    )
+    db.execute(
+        "INSERT INTO dm_messages (conversation_id, sender_id, content) VALUES (?, ?, ?)",
+        (1, 1, "Also: Jamie left the internal debug API endpoint live on /api/v1/debug — it accepts a POST "
+               "with a 'script' field and runs it from the scripts/ directory. It's gated behind a separate "
+               "debug token (not your normal API token) so it should be safe, but it's worth auditing before "
+               "the security review.")
+    )
+    db.execute(
+        "INSERT INTO dm_messages (conversation_id, sender_id, content) VALUES (?, ?, ?)",
+        (1, 1, "One more housekeeping note: the corpchat-admin binary was copied to "
+               "/data/uploads/tools/corpchat-admin for the ops team to test. It's not linked from the UI "
+               "but it's sitting there on the filesystem.")
     )
 
     # --- Crypto — Laura ---

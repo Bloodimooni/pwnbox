@@ -62,7 +62,7 @@ async function waitForApp() {
   // Set initial flag cookie so it exists before the first poll cycle.
   await page.setCookie(
     { name: 'flag', value: encryptToken(DEBUG_TOKEN), domain, path: '/', httpOnly: false },
-    { name: 'hint', value: 'This looks encrypted. Maybe the platform has a crypto endpoint you could use...', domain, path: '/', httpOnly: false },
+    { name: 'hint', value: 'This looks encrypted. Try POST /api/v1/crypto/encrypt with {"data":"..."} — maybe you can reverse it.', domain, path: '/', httpOnly: false },
   );
   console.log('[*] Flag cookie set (encrypted debug token)');
 

@@ -71,19 +71,6 @@ The application starts on `http://localhost:5000`.
 
 ---
 
-## Default Accounts
-
-### CorpChat Application
-
-| Role | Username | Password |
-|------|----------|----------|
-| Regular user | `demo` | `demo123` |
-| Administrator | `admin` | `admin2026!` |
-
-The admin panel is at `/admin`.
-
----
-
 ## Project Structure
 
 ```

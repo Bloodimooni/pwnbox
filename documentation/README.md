@@ -54,15 +54,6 @@ This directory contains technical documentation for the PwnBox CTF platform.
 | CorpChat admin panel | `http://<instance-ip>:8080/admin` |
 | CorpChat REST API | `http://<instance-ip>:8080/api/v1` |
 
-### Default Accounts
-
-| Role | Username | Password | Notes |
-|------|----------|----------|-------|
-| Regular user | `demo` | `demo123` | General-purpose test account |
-| Administrator | `admin` | `admin2026!` | Admin panel at `/admin` |
-| XSS bot | `compliancebot` | `C0mpl1anceB0t2026` | Puppeteer bot; carries flag cookie |
-| SSH service account | `svc_backup` | `netterFeger69#` | Discoverable via binary reversing |
-
 ### Run Script Commands
 
 | Command | Purpose |

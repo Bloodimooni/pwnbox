@@ -118,17 +118,17 @@ def _seed_data(db):
     # Worker account - sarah_chen (id=2) - her reset token is pre-seeded and discoverable via SQLi
     sarah_token = str(uuid.uuid4())
     db.execute(
-        "INSERT INTO users (username, email, password_hash, display_name, bio, api_token, role, avatar_filename) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO users (username, email, password_hash, display_name, bio, api_token, role) VALUES (?, ?, ?, ?, ?, ?, ?)",
         ('sarah_chen', 'sarah.chen@corpchat.local', generate_password_hash('sarah2024!'),
-         'Sarah Chen', 'Product Manager. Been here 3 years!', sarah_token, 'user', 'sarah_avatar.svg')
+         'Sarah Chen', 'Product Manager. Been here 3 years!', sarah_token, 'user')
     )
 
     # Manager account - manager_bob (id=3) - has admin role, api_token discoverable via IDOR
     bob_token = '7f3d9e2a-1b4c-4f8e-a3d7-5c9b0e6f2a1d'
     db.execute(
-        "INSERT INTO users (username, email, password_hash, display_name, bio, api_token, role, avatar_filename) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO users (username, email, password_hash, display_name, bio, api_token, role) VALUES (?, ?, ?, ?, ?, ?, ?)",
         ('manager_bob', 'bob.manager@corpchat.local', generate_password_hash('b0bM@nager2024!'),
-         'Bob Manager', 'Senior Manager. Admin access for platform oversight.', bob_token, 'admin', 'bob_avatar.svg')
+         'Bob Manager', 'Senior Manager. Admin access for platform oversight.', bob_token, 'admin')
     )
 
     # Compliance bot account - compliancebot (id=4)

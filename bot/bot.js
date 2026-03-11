@@ -7,7 +7,7 @@ const fs        = require('fs');
 const TARGETS_FILE   = process.env.TARGETS_FILE   || '';
 const TARGET_URL     = (process.env.TARGET_URL    || 'http://localhost:8080').replace(/\/$/, '');
 const BOT_USER       = process.env.BOT_USER       || 'compliancebot';
-const BOT_PASS       = process.env.BOT_PASS       || 'C0mpl1anceB0t2026';
+const BOT_PASS       = process.env.BOT_PASS       || 'ufoundit';
 const DEBUG_TOKEN    = process.env.DEBUG_TOKEN    || 'b3b46de0-86e1-4a98-885d-1a85d2bef561';
 const POLL_MS        = parseInt(process.env.POLL_MS || '60000', 10);
 const EXEC_PATH      = process.env.CHROMIUM_PATH  || '/usr/bin/chromium';
@@ -40,16 +40,22 @@ function loadTargets() {
 }
 
 // --- Wait for app ---
-async function waitForUrl(url) {
+// Returns true when reachable, false if maxWaitMs elapses (default 5 min).
+async function waitForUrl(url, maxWaitMs = 300_000) {
   const { get } = url.startsWith('https') ? require('https') : require('http');
+  const deadline = Date.now() + maxWaitMs;
   for (;;) {
     try {
       await new Promise((resolve, reject) => {
         get(url + '/login', res => { res.resume(); resolve(); }).on('error', reject);
       });
       console.log(`[*] App ready: ${url}`);
-      return;
+      return true;
     } catch {
+      if (Date.now() >= deadline) {
+        console.error(`[!] Timed out waiting for ${url} after ${maxWaitMs / 1000}s — skipping`);
+        return false;
+      }
       console.log(`[*] Waiting for ${url}...`);
       await sleep(3000);
     }
@@ -62,7 +68,8 @@ const sessions = new Map();
 
 async function openSession(browser, target) {
   const { url, botUser, botPass, debugToken } = target;
-  await waitForUrl(url);
+  const ready = await waitForUrl(url);
+  if (!ready) throw new Error(`App never became reachable: ${url}`);
 
   const page = await browser.newPage();
   await page.goto(`${url}/login`, { waitUntil: 'domcontentloaded' });
@@ -72,6 +79,10 @@ async function openSession(browser, target) {
     page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
     page.click('button[type=submit]'),
   ]);
+  const finalUrl = page.url();
+  if (finalUrl.includes('/login') || finalUrl.includes('/force-change-password')) {
+    throw new Error(`Login failed for ${botUser} @ ${url} — redirected to ${finalUrl}`);
+  }
   console.log(`[*] Logged in as ${botUser} @ ${url}`);
 
   const domain = new URL(url).hostname;

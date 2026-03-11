@@ -33,7 +33,7 @@ services:
     environment:
       - TARGET_URL=http://corpchat-dev:8080
       - BOT_USER=compliancebot
-      - BOT_PASS=C0mpl1anceB0t2026
+      - BOT_PASS=ufoundit
       - DEBUG_TOKEN=b3b46de0-86e1-4a98-885d-1a85d2bef561
       - POLL_MS=60000
       - CHROMIUM_PATH=/usr/bin/chromium

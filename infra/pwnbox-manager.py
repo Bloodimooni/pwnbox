@@ -170,7 +170,7 @@ def _write_bot_targets(cfg, instances):
         {
             "url":        f"http://pwnbox-{team}:{app_port}",
             "botUser":    "compliancebot",
-            "botPass":    "C0mpl1anceB0t2026",
+            "botPass":    "ufoundit",
             "debugToken": "b3b46de0-86e1-4a98-885d-1a85d2bef561",
         }
         for team in instances

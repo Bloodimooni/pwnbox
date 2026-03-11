@@ -107,6 +107,29 @@ The page will render the token results section. You will see a row where `user_i
 a3f8c2e1b4d7f9a0c5e2b8d4f1a6c3e7
 ```
 
+### Error-Based Discovery
+
+If you haven't found the injection point yet, the application will hint you toward it. Enter a single quote `'` in the search bar:
+
+```
+http://<ip>:8080/search?q='
+```
+
+The page fires a JavaScript `alert()` popup and renders an inline warning banner:
+
+```
+[DEBUG] Internal error in token subsystem:
+Query: SELECT id, username, api_token FROM users WHERE api_token = '''
+Error: near "'": syntax error
+```
+
+This immediately reveals:
+1. Your input is injected directly into a SQL string after `api_token = '`
+2. The exact query structure and all 3 column names (`id`, `username`, `api_token`)
+3. The injection is string-based — close the quote and use UNION to redirect the query
+
+With this information you can construct the UNION payload directly.
+
 ### Why More Columns Are Available
 
 You can extend the attack to pull more information:

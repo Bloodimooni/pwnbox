@@ -133,7 +133,7 @@ cmd_app() {
 
 cmd_portal() {
     info "Starting CTF portal..."
-    info "  Portal: http://localhost:8888"
+    info "  Portal: http://localhost:8080:8888"
     echo ""
 
     # Portal instances require NetBird

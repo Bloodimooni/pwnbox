@@ -65,7 +65,7 @@ All bot behaviour is configurable via environment variables. The `docker-compose
 |----------|---------|-------------|
 | `TARGET_URL` | `http://localhost:8080` | URL of the CorpChat application |
 | `BOT_USER` | `compliancebot` | Username the bot logs in as |
-| `BOT_PASS` | `C0mpl1anceB0t2026` | Password for the bot account |
+| `BOT_PASS` | `ufoundit` | Password for the bot account |
 | `DEBUG_TOKEN` | `b3b46de0-86e1-4a98-885d-1a85d2bef561` | The raw debug API token placed in the flag cookie |
 | `POLL_MS` | `60000` | Milliseconds between DM poll cycles (default: 60 seconds) |
 | `CHROMIUM_PATH` | `/usr/bin/chromium` | Path to the Chromium executable |
@@ -258,7 +258,7 @@ services:
     image: pwnbox-ctf
     container_name: corpchat-dev
     ports:
-      - "8080:8080"
+      - "80:80"
       - "2222:22"
     volumes:
       - corpchat_data:/data
@@ -277,7 +277,7 @@ services:
     environment:
       - TARGET_URL=http://corpchat:8080   ← uses Docker service name, not localhost
       - BOT_USER=compliancebot
-      - BOT_PASS=C0mpl1anceB0t2026
+      - BOT_PASS=ufoundit
       - DEBUG_TOKEN=b3b46de0-86e1-4a98-885d-1a85d2bef561
       - POLL_MS=60000
       - CHROMIUM_PATH=/usr/bin/chromium
@@ -288,7 +288,7 @@ Key points:
 
 - `depends_on: corpchat` — Docker Compose starts the `corpchat` service before the bot. However `depends_on` only waits for the container to start, not for the Flask app inside it to be ready. The bot handles this with `waitForApp()`, which polls `/login` until it gets a 200.
 - `TARGET_URL=http://corpchat:8080` — The bot uses the Docker service name (`corpchat`) as the hostname, which resolves to the corpchat container's IP on the shared Docker network. This is the standard Docker Compose internal DNS.
-- The two containers share a Docker network (created by Compose). The `corpchat` container's ports are also exposed to the host (`8080:8080`, `2222:22`), but the bot uses the internal network.
+- The two containers share a Docker network (created by Compose). The `corpchat` container's ports are also exposed to the host (`80:80`, `2222:22`), but the bot uses the internal network.
 
 ---
 

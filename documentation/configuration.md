@@ -159,7 +159,7 @@ RUN mkdir -p /var/run/sshd && \
     printf 'Port 22\nPasswordAuthentication yes\nPermitRootLogin no\nUsePAM yes\nLogLevel VERBOSE\nAcceptEnv LANG LC_*\nSubsystem sftp /usr/lib/openssh/sftp-server\n' \
         > /etc/ssh/sshd_config
 
-EXPOSE 8080 22
+EXPOSE 80 22
 
 ENV FLASK_CONFIG=config.ProductionConfig
 ENV SECRET_KEY=corpchat-default-secret
@@ -275,7 +275,7 @@ docker build \
 
 | Port | Service |
 |------|---------|
-| `8080` | Flask application (CorpChat) |
+| `80` | Flask application (CorpChat) |
 | `22` | OpenSSH daemon |
 
 ---
@@ -295,7 +295,7 @@ services:
     image: pwnbox-ctf
     container_name: corpchat-dev
     ports:
-      - "8080:8080"    # CorpChat web UI
+      - "80:80"    # CorpChat web UI
       - "2222:22"      # SSH (host port 2222 → container port 22)
     volumes:
       - corpchat_data:/data
@@ -317,7 +317,7 @@ services:
     environment:
       - TARGET_URL=http://corpchat:8080
       - BOT_USER=compliancebot
-      - BOT_PASS=C0mpl1anceB0t2026
+      - BOT_PASS=ufoundit
       - DEBUG_TOKEN=b3b46de0-86e1-4a98-885d-1a85d2bef561
       - POLL_MS=60000
       - CHROMIUM_PATH=/usr/bin/chromium

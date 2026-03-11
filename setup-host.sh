@@ -57,12 +57,12 @@ fi
 # Build the main Docker image
 echo ""
 echo "=== Building PwnBox Docker image ==="
-docker build -f "$SCRIPT_DIR/docker/Dockerfile" -t "$(get_config general image_name)" "$SCRIPT_DIR"
+docker build --no-cache -f "$SCRIPT_DIR/docker/Dockerfile" -t "$(get_config general image_name)" "$SCRIPT_DIR"
 
 # Build the XSS bot image
 echo ""
 echo "=== Building XSS Bot image ==="
-docker build -f "$SCRIPT_DIR/bot/dockerfile" -t "$(get_config general bot_image_name)" "$SCRIPT_DIR/bot"
+docker build --no-cache -f "$SCRIPT_DIR/bot/dockerfile" -t "$(get_config general bot_image_name)" "$SCRIPT_DIR/bot"
 
 echo ""
 echo "=== Setup Complete ==="

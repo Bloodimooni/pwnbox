@@ -50,7 +50,7 @@ def _migrate_db(db):
         db.execute("ALTER TABLE users ADD COLUMN must_change_password INTEGER DEFAULT 0")
     if 'last_activity' not in user_columns:
         db.execute("ALTER TABLE users ADD COLUMN last_activity TIMESTAMP")
-    # Legacy MD5(base64) password hash — weak scheme discoverable after SSH + binary reversing
+    # Legacy base64(MD5) password hash — weak scheme discoverable after SSH + binary reversing
     if 'legacy_password_hash' not in user_columns:
         db.execute("ALTER TABLE users ADD COLUMN legacy_password_hash TEXT")
 
@@ -104,7 +104,7 @@ def _seed_data(db):
     # Default admin user for the admin portal
     db.execute(
         "INSERT INTO admin_users (username, password_hash, privilege_level) VALUES (?, ?, ?)",
-        ('admin', generate_password_hash('K9#mPx2@vL7qRt4!'), 'superadmin')
+        ('admin_master', generate_password_hash('CTF{r3v_3ng_b4ackd00r_4cc3ss!}'), 'superadmin')
     )
 
     # CorpChat bot account (id=1)
@@ -137,7 +137,7 @@ def _seed_data(db):
     compliancebot_token = str(uuid.uuid4())
     db.execute(
         "INSERT INTO users (username, email, password_hash, display_name, bio, api_token, role) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        ('compliancebot', 'compliancebot@corpchat.local', generate_password_hash('C0mpl1anceB0t2026'),
+        ('compliancebot', 'compliancebot@corpchat.local', generate_password_hash('ufoundit'),
          'Compliance Bot', 'Automated compliance monitoring bot. Reads all DM conversations.', compliancebot_token, 'user')
     )
 
@@ -292,15 +292,15 @@ def _seed_data(db):
     # This is the "weak crypto" scheme players discover after SSH access + DB dump via the binary.
     # compliancebot's legacy "password" is the flag itself — cracking it reveals the next step.
     def _legacy_hash(plaintext):
-        b64 = base64.b64encode(plaintext.encode()).decode()
-        return hashlib.md5(b64.encode()).hexdigest()
+        md5_bytes = hashlib.md5(plaintext.encode()).digest()
+        return base64.b64encode(md5_bytes).decode()
 
     legacy_passwords = {
         'chatbot':     ('bot12345',                             None),
         'sarah_chen':  ('sarah2024!',                           None),
         'manager_bob': ('b0bM@nager2024!',                      None),
-        # compliancebot's "password" in the legacy system is the flag
-        'compliancebot':   ('CTF{md5_b64_l3g4cy_p4ss_cr4ck3d}',    None),
+        # compliancebot's "password" in the legacy system is the flag — crackable with RockYou.txt
+        'compliancebot':   ('ufoundit',    None),
     }
     for username, (plaintext, _) in legacy_passwords.items():
         db.execute(

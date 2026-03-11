@@ -31,7 +31,7 @@ All components read from the same `infra/config.ini` file and share the same ins
 | `docker_network` | `pwnbox-net` | Name of the Docker bridge network |
 | `docker_subnet` | `172.20.0.0/16` | Subnet assigned to the Docker network |
 | `container_ip_start` | `2` | Last-octet offset for the first assigned container IP |
-| `container_app_port` | `8080` | Port the CorpChat Flask application listens on inside the container |
+| `container_app_port` | `80` | Port the CorpChat Flask application listens on inside the container |
 
 ### `[netbird]`
 
@@ -222,7 +222,7 @@ Players connect using the NetBird CLI:
 netbird up --setup-key <player_setup_key> --management-url <management_url>
 ```
 
-Once connected, the challenge instance is accessible at `http://<netbird-ip>:8080` and via SSH on port 22.
+Once connected, the challenge instance is accessible at `http://<netbird-ip>` and via SSH on port 22.
 
 ---
 

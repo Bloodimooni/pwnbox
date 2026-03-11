@@ -1,8 +1,30 @@
+import sqlite3 as _sqlite3
+
 from flask import Blueprint, render_template, request, session
 from database import get_db
 from routes.auth import login_required
 
 search_bp = Blueprint('search', __name__)
+
+# Joshua's fix to keep players on the intended CTF path:
+# Tables and columns that must not be readable via the intentionally vulnerable
+# token-lookup query. Applied via SQLite's authorizer callback so it holds even
+# against UNION-based injection — no SQL trick can bypass an authorizer decision.
+#
+# SQLITE_DENY  — raises an error (used for DM tables: blocks access visibly)
+# SQLITE_IGNORE — returns NULL instead of the real value, no error raised.
+#   Used for sensitive columns that also appear in the WHERE clause (api_token):
+#   DENY would break the WHERE evaluation itself, IGNORE silently nulls them out.
+_SQLI_BLOCKED_TABLES  = frozenset({'dm_messages', 'dm_conversations'})
+_SQLI_IGNORE_COLUMNS  = frozenset({('users', 'api_token'), ('users', 'password_hash')})
+
+def _sqli_authorizer(action, arg1, arg2, dbname, trigger):
+    if action == _sqlite3.SQLITE_READ:
+        if arg1 in _SQLI_BLOCKED_TABLES:
+            return _sqlite3.SQLITE_DENY
+        if (arg1, arg2) in _SQLI_IGNORE_COLUMNS:
+            return _sqlite3.SQLITE_IGNORE
+    return _sqlite3.SQLITE_OK
 
 
 @search_bp.route('/')
@@ -12,6 +34,8 @@ def index():
     messages = []
     users = []
     token_results = []
+    sql_error = None
+    sql_query = None
 
     if query:
         db = get_db()
@@ -60,17 +84,26 @@ def index():
         # Returns nothing for any normal search term (tokens are UUIDs, not guessable).
         # VULNERABILITY: Direct string interpolation - injectable via UNION attack.
         # Intended payload: ' UNION SELECT id, user_id, token FROM password_resets --
+        # NOTE: SELECT uses display_name (not api_token) so a trivial OR 1=1 dump
+        #       only reveals boring display names, not sensitive tokens.
         cursor = db.cursor()
-        sql = f"SELECT id, username, api_token FROM users WHERE api_token = '{query}'"
+        sql = f"SELECT id, username, display_name FROM users WHERE api_token = '{query}'"
+        db.set_authorizer(_sqli_authorizer)
         try:
             cursor.execute(sql)
             token_results = cursor.fetchall()
         except Exception as e:
             token_results = []
+            sql_error = str(e)
+            sql_query = sql
             print("Token lookup error:", e)
+        finally:
+            db.set_authorizer(None)
 
     return render_template('search/results.html',
                            query=query,
                            messages=messages,
                            users=users,
-                           token_results=token_results)
+                           token_results=token_results,
+                           sql_error=sql_error,
+                           sql_query=sql_query)

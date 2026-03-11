@@ -49,10 +49,10 @@ This directory contains technical documentation for the PwnBox CTF platform.
 | Service | Default URL |
 |---------|-------------|
 | CorpChat application | `http://localhost:8080` |
-| CTF player portal | `http://localhost:8888` |
-| Operator scaler | `http://localhost:8889` |
-| CorpChat admin panel | `http://<instance-ip>:8080/admin` |
-| CorpChat REST API | `http://<instance-ip>:8080/api/v1` |
+| CTF player portal | `http://localhost:8080:8888` |
+| Operator scaler | `http://localhost:8080:8889` |
+| CorpChat admin panel | `http://<instance-ip>/admin` |
+| CorpChat REST API | `http://<instance-ip>/api/v1` |
 
 ### Run Script Commands
 

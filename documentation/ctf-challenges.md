@@ -12,7 +12,7 @@ CorpChat contains **five hidden flags** spread across escalating difficulty leve
 |---|------|----------|------------|-------------|
 | 1 | `CTF{exposed_git_repository_secret}` | Misconfiguration / OSINT | Easy | Svenja |
 | 2 | `CTF{idor_token_auth_bypass_privesc_complete}` | IDOR / SQLi / API Abuse | Medium | Svenja |
-| 3 | `CTF{md5_b64_l3g4cy_p4ss_cr4ck3d}` | Cryptography / Hash Cracking | Medium | Laura |
+| 3 | `ufoundit` | Cryptography / Hash Cracking | Medium | Laura |
 | 4 | `CTF{r3v_3ng_b4ackd00r_4cc3ss!}` | Reverse Engineering | Medium-Hard | Joshua |
 | 5 | `CTF{w1ldcard_t4r_g0t_r00t!}` | Privilege Escalation | Hard | Joshua |
 
@@ -31,7 +31,7 @@ A fake git repository is pre-seeded under `/static/challenge/`. The `.git` direc
 
 The repository is built by `ctfrepo.sh`, a Python-based script that creates raw git objects (blobs, trees, commits) without ever calling `git init`. This produces an authentic git object store that the `git` CLI can clone and traverse.
 
-**Entry point:** Navigate to `http://<instance-ip>:8080/challenge/` in a browser. The directory listing reveals `.git/`.
+**Entry point:** Navigate to `http://<instance-ip>/challenge/` in a browser. The directory listing reveals `.git/`.
 
 ### How It Works
 
@@ -74,27 +74,28 @@ The search endpoint (`routes/search2.py`) contains an intentional SQL injection 
 ## Flag 3 — Weak Cryptography / Hash Cracking
 
 **Category:** Cryptography
-**Flag:** `CTF{md5_b64_l3g4cy_p4ss_cr4ck3d}`
+**Flag:** `ufoundit`
 
 ### What Was Added
 
-Every user row in the database has a `legacy_password_hash` column containing an MD5 hash of the base64-encoded password (`MD5(base64(password))`). This is a deliberately weak "legacy" hashing scheme.
+Every user row in the database has a `legacy_password_hash` column containing the base64-encoding of the raw MD5 digest (`base64(MD5(password))`). This is a deliberately weak "legacy" hashing scheme.
 
-For all normal users the legacy plaintext is just their regular password. For the bot account `compliancebot`, the legacy plaintext is the flag string itself:
+For all normal users the legacy plaintext is just their regular password. For the bot account `compliancebot`, the legacy plaintext is the flag:
 
 ```python
-'compliancebot': ('CTF{md5_b64_l3g4cy_p4ss_cr4ck3d}', None)
+'compliancebot': ('ufoundit', None)
 ```
 
-Players discover the database after gaining SSH access (which requires Flag 4 credentials) or via the file download feature once they have RCE. They dump the `users` table, see the MD5 hashes, and crack `compliancebot`'s hash to reveal the flag.
+Players discover the database after gaining SSH access (via Flag 4 credentials) or via the SQL injection on the search endpoint. They dump the `users` table, see base64 strings, decode each to get the raw MD5 bytes, and crack `compliancebot`'s hash with RockYou.txt to reveal the flag.
 
 ### How It Works
 
-1. Player gains SSH or file access and dumps `corpchat.db`.
+1. Player gains SSH or web access and dumps `corpchat.db`.
 2. Runs `sqlite3 corpchat.db "SELECT username, legacy_password_hash FROM users"`.
-3. Recognises the 32-character hex strings as MD5.
-4. Passes the hashes through hashcat or john: `hashcat -m 0 hashes.txt wordlist.txt`.
-5. Cracking `compliancebot`'s hash reveals a base64 string; base64-decoding it yields the flag.
+3. Recognises the 24-character base64 strings (ending in `==`), decodes to 16 raw bytes.
+4. Converts raw bytes to hex to get the MD5 digest.
+5. Cracks with hashcat mode 0: `hashcat -m 0 <md5hex> /usr/share/wordlists/rockyou.txt`.
+6. Cracked plaintext `ufoundit` is the flag.
 
 **See:** [Crypto Challenge Writeup](writeup/crypto-challenge-writeup.md)
 

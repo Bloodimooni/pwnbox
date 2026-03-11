@@ -77,7 +77,7 @@ The portal provides team registration, instance management, flag submission, and
 ./run.sh portal
 ```
 
-The portal starts on `http://localhost:8888` by default (configurable in `config.ini`).
+The portal starts on `http://localhost:8080:8888` by default (configurable in `config.ini`).
 
 On first launch, the script checks whether Python dependencies (`flask`, `bcrypt`, `filelock`) are installed and installs them if not.
 
@@ -89,7 +89,7 @@ The scaler is a lightweight operator tool for spinning instances up and down wit
 ./run.sh scale
 ```
 
-The scaler starts on `http://localhost:8889` by default (configurable in `config.ini`).
+The scaler starts on `http://localhost:8080:8889` by default (configurable in `config.ini`).
 
 ### CorpChat Standalone (Development)
 
@@ -153,7 +153,7 @@ When a challenge container starts for the first time, `entrypoint.py` performs t
 
 ### CorpChat Application (via instance)
 1. Connect to NetBird using the player setup key and management URL.
-2. Access the application at `http://<netbird-ip>:8080`.
+2. Access the application at `http://<netbird-ip>`.
 3. Log in with `demo` / `demo123`.
 
 ### CorpChat Admin Panel

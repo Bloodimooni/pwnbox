@@ -2,16 +2,16 @@
 
 **Category:** Cryptography
 **Difficulty:** Medium
-**Flag:** `CTF{md5_b64_l3g4cy_p4ss_cr4ck3d}`
+**Flag:** `ufoundit`
 **Responsible:** Laura
 
 ---
 
 ## Overview
 
-Every user account in the CorpChat database has a `legacy_password_hash` column. This column contains an MD5 hash of the base64-encoding of the user's password — written as `MD5(base64(plaintext))`. For all normal users the plaintext is their regular password. For the compliance bot account `compliancebot`, the plaintext stored in this scheme is the flag itself.
+Every user account in the CorpChat database has a `legacy_password_hash` column. This column contains the base64-encoding of the raw MD5 digest of the user's password — written as `base64(MD5(plaintext))`. For all normal users the plaintext is their regular password. For the compliance bot account `compliancebot`, the plaintext is the flag itself.
 
-Players discover the database, recognise the MD5 hash format, reverse-engineer the two-step scheme, and crack `compliancebot`'s hash to reveal the flag.
+Players discover the database, recognise the base64-encoded format, decode it to get the raw MD5 bytes, and crack `compliancebot`'s hash with RockYou.txt to reveal the flag.
 
 ---
 
@@ -21,28 +21,29 @@ The scheme is seeded in `database.py`:
 
 ```python
 def _legacy_hash(plaintext):
-    b64 = base64.b64encode(plaintext.encode()).decode()
-    return hashlib.md5(b64.encode()).hexdigest()
+    md5_bytes = hashlib.md5(plaintext.encode()).digest()  # raw bytes, not hexdigest
+    return base64.b64encode(md5_bytes).decode()
 
 legacy_passwords = {
-    'demo':        ('demo123',                             None),
-    'chatbot':     ('bot12345',                            None),
-    'sarah_chen':  ('sarah2024!',                          None),
-    'manager_bob': ('b0bM@nager2024!',                     None),
-    'compliancebot':   ('CTF{md5_b64_l3g4cy_p4ss_cr4ck3d}',   None),  # ← flag
+    'chatbot':     ('bot12345',     None),
+    'sarah_chen':  ('sarah2024!',   None),
+    'manager_bob': ('b0bM@nager2024!', None),
+    'compliancebot':   ('ufoundit',     None),  # ← flag
 }
 ```
+
+The stored value is a 24-character base64 string (ends in `==`), not the familiar 32-character MD5 hex string.
 
 ### Why This Scheme Is Weak
 
 | Problem | Explanation |
 |---------|-------------|
-| MD5 is broken | MD5 was deprecated for security use in 2004. It is extremely fast (billions of hashes/second on a GPU) |
-| No salt | The same plaintext always produces the same hash. Precomputed rainbow tables can crack common passwords instantly |
-| Base64 is reversible | Base64 adds no cryptographic value — it only changes the character set and length of the input |
-| Single-byte XOR per character | Not applicable here, but the scheme is equivalent in weakness to MD5 of the raw plaintext |
+| MD5 is broken | MD5 was deprecated for security use in 2004. Billions of hashes/second on a GPU |
+| No salt | Same plaintext always produces the same hash — directly crackable with RockYou.txt |
+| Base64 is encoding, not encryption | Base64 adds zero cryptographic strength; it only changes the representation of the hash |
+| Password in RockYou.txt | `ufoundit` is a dictionary word, cracked instantly by any wordlist attack |
 
-The correct scheme for password storage is bcrypt, scrypt, or Argon2 — all of which are deliberately slow, salted, and memory-hard.
+The correct scheme for password storage is bcrypt, scrypt, or Argon2 — deliberately slow, salted, and memory-hard.
 
 ---
 
@@ -57,35 +58,30 @@ ssh svc_backup@<ip>
 # Password: netterFeger69#
 ```
 
-The database file is at `/data/corpchat.db` and readable by `svc_backup` (the file is owned by the `corpchat` service account, but the group is readable):
+The database file is at `/data/corpchat.db` and readable by `svc_backup`:
 
 ```bash
-# Check permissions
 ls -la /data/corpchat.db
-
-# Copy it to your attacker machine
-exit
 scp svc_backup@<ip>:/data/corpchat.db ./corpchat.db
 ```
 
 ### Path B: Admin Panel Backup
 
-If you have admin panel access (`admin` / `admin2026!` at `/admin`):
+If you have admin panel access at `/admin`:
 
-1. Log in to the admin panel at `/admin`.
-2. Click **Create Backup** in the top navigation bar.
-3. The backup is stored at `/data/backups/corpchat_backup_YYYYMMDD_HHMMSS.db`.
-4. Download it via the Files section or directly via SSH.
+1. Log in and click **Create Backup**.
+2. The backup lands at `/data/backups/corpchat_backup_YYYYMMDD_HHMMSS.db`.
+3. Download via SSH or the Files section.
 
 ### Path C: SQL Injection
 
-The Stage 2 SQL injection lets you dump the `users` table directly from the web:
+The Stage 2 SQL injection lets you dump the `users` table directly from the browser:
 
 ```
 /search?q=' UNION SELECT id, username, legacy_password_hash FROM users --
 ```
 
-This extracts all five legacy hashes through the browser without needing file access.
+This extracts all legacy hashes through the browser without needing file access.
 
 ---
 
@@ -100,33 +96,37 @@ Output:
 
 ```
 id  username     legacy_password_hash
---  -----------  --------------------------------
-1   demo         <32-char hex>
-2   chatbot      <32-char hex>
-3   sarah_chen   <32-char hex>
-4   manager_bob  <32-char hex>
-5   compliancebot    <32-char hex>
+--  -----------  ------------------------
+1   chatbot      QZ8CEw7b24IwMNeE5RFdfA==
+2   sarah_chen   6CPT/2IqwIs/EUQw68KdIw==
+3   manager_bob  eLuHkGGwhLLDfQx7NXiDNw==
+4   compliancebot    axiZUD8XHIwuAnDt4tidow==
 ```
 
-All five values are 32-character hexadecimal strings — the exact length of an MD5 digest. Compare with bcrypt (which starts with `$2b$` and is 60 characters) — this confirms we are looking at raw MD5.
+All values are 24-character strings ending in `==` — this is the base64 encoding of 16 raw bytes, which is exactly the size of an MD5 digest. Compare with bcrypt (starts with `$2b$`, 60 characters) — this confirms we are looking at base64-encoded MD5.
 
 ---
 
 ## Step 3 — Understand and Verify the Scheme
 
-Before attacking the unknown hash, verify the scheme against an account whose password you know. `demo`'s password is `demo123`:
+Before attacking the unknown hash, verify the scheme against an account whose password you know. `chatbot`'s password is `bot12345`:
 
 ```python
 import hashlib, base64
 
-plaintext = 'demo123'
-step1 = base64.b64encode(plaintext.encode()).decode()  # 'ZGVtbzEyMw=='
-step2 = hashlib.md5(step1.encode()).hexdigest()
-print(f"base64: {step1}")
-print(f"md5:    {step2}")
+plaintext = 'bot12345'
+md5_bytes = hashlib.md5(plaintext.encode()).digest()
+stored = base64.b64encode(md5_bytes).decode()
+print(f"MD5 (hex): {md5_bytes.hex()}")
+print(f"base64:    {stored}")
+# base64: QZ8CEw7b24IwMNeE5RFdfA==
 ```
 
-Confirm the output matches what the database has for `demo`. You now have a verified understanding of the scheme.
+Confirm the output matches what the database has for `chatbot`. You now have a verified understanding of the scheme:
+
+1. Take the raw password bytes
+2. Run MD5 → get 16 raw bytes
+3. Base64-encode those bytes → store the result
 
 ---
 
@@ -135,123 +135,94 @@ Confirm the output matches what the database has for `demo`. You now have a veri
 ```bash
 sqlite3 corpchat.db \
   "SELECT legacy_password_hash FROM users WHERE username='compliancebot'"
-```
-
-Save the hash:
-
-```bash
-sqlite3 corpchat.db \
-  "SELECT legacy_password_hash FROM users WHERE username='compliancebot'" \
-  > compliancebot.hash
-
-cat compliancebot.hash
+# axiZUD8XHIwuAnDt4tidow==
 ```
 
 ---
 
 ## Step 5 — Crack the Hash
 
-### Method A — Hashcat (Standard MD5)
+The stored value is `base64(MD5(plaintext))`. To crack it:
 
-The `legacy_password_hash` column is MD5 of the base64 string — meaning the direct input to MD5 is the base64 of the plaintext. Hashcat mode `0` is raw MD5.
+1. **Decode the base64** to recover the raw MD5 bytes, then convert to hex.
+2. **Crack the MD5 hex** with hashcat mode 0 (raw MD5) against RockYou.txt.
+
+### Step 5a — Decode Base64 to MD5 Hex
 
 ```bash
-# Try rockyou wordlist — won't find it (flag is not a dictionary word)
+python3 -c "import base64; print(base64.b64decode('axiZUD8XHIwuAnDt4tidow==').hex())"
+# 6b1899503f171c8c2e0270ede2d89da3
+```
+
+Or inline with hashcat by piping:
+
+```bash
+echo "axiZUD8XHIwuAnDt4tidow==" | python3 -c "
+import sys, base64
+print(base64.b64decode(sys.stdin.read().strip()).hex())
+" > compliancebot.hash
+```
+
+### Step 5b — Crack with Hashcat (Mode 0 — Raw MD5)
+
+```bash
 hashcat -m 0 compliancebot.hash /usr/share/wordlists/rockyou.txt
-
-# Hashcat can apply rules to transform words
-# e.g., prepend CTF{, append }
-hashcat -m 0 compliancebot.hash /usr/share/wordlists/rockyou.txt -r /usr/share/hashcat/rules/best64.rule
 ```
 
-Standard wordlists won't crack this because the preimage (the base64 of the flag) is not a natural-language word. The preimage is:
+Output:
 
 ```
-Q1RGe21kNV9iNjRfbDNnNGN5X3A0c3NfY3I0Y2szZH0=
+6b1899503f171c8c2e0270ede2d89da3:ufoundit
 ```
 
-You would need to know this preimage in order for hashcat to find it. The more practical approach is Method B.
-
-### Method B — Hashcat with Base64-Transformed Input
-
-Hashcat supports rule-based attacks where it transforms the input before hashing. Using the `--rule-right` option with a base64 encode rule (if your hashcat version supports it), or creating a wordlist of pre-computed preimages:
+### Method B — John the Ripper
 
 ```bash
-# Generate a wordlist of CTF-format preimages
-python3 -c "
-import base64
-candidates = [
-    'CTF{md5_b64_l3g4cy_p4ss_cr4ck3d}',
-]
-for c in candidates:
-    print(base64.b64encode(c.encode()).decode())
-" > preimage_list.txt
+# Save the hex hash
+echo "6b1899503f171c8c2e0270ede2d89da3" > compliancebot.hash
 
-# Crack using preimages directly as the MD5 input
-hashcat -m 0 compliancebot.hash preimage_list.txt
+# Crack
+john --format=raw-md5 --wordlist=/usr/share/wordlists/rockyou.txt compliancebot.hash
+john --show compliancebot.hash
+# ?:ufoundit
 ```
 
-### Method C — Python Script (Most Direct)
-
-Since you know the scheme and suspect the flag format is `CTF{...}`, write a targeted cracker:
+### Method C — Python Script
 
 ```python
 import hashlib, base64, sqlite3
 
-# Load the target hash
 db = sqlite3.connect('corpchat.db')
-target = db.execute(
+stored_b64 = db.execute(
     "SELECT legacy_password_hash FROM users WHERE username='compliancebot'"
 ).fetchone()[0]
 db.close()
 
-print(f"Target hash: {target}")
+target_bytes = base64.b64decode(stored_b64)
+print(f"Target MD5 hex: {target_bytes.hex()}")
 
-# Verify with known accounts first
 def legacy_hash(plaintext):
-    b64 = base64.b64encode(plaintext.encode()).decode()
-    return hashlib.md5(b64.encode()).hexdigest()
+    return base64.b64encode(hashlib.md5(plaintext.encode()).digest()).decode()
 
-# Sanity check
-assert legacy_hash('demo123') != target, "Sanity check failed"
+# Verify scheme with known account
+assert legacy_hash('bot12345') == 'QZ8CEw7b24IwMNeE5RFdfA=='
 
-# Try CTF-format candidates
-candidates = [
-    'CTF{md5_b64_l3g4cy_p4ss_cr4ck3d}',
-    # Add other guesses here based on the challenge context
-]
-
-for candidate in candidates:
-    h = legacy_hash(candidate)
-    if h == target:
-        print(f"CRACKED: {candidate}")
-        break
-else:
-    print("Not found in candidate list. Expand the wordlist.")
+# Crack from RockYou wordlist
+with open('/usr/share/wordlists/rockyou.txt', 'rb') as f:
+    for line in f:
+        word = line.rstrip(b'\n').decode('latin-1')
+        if legacy_hash(word) == stored_b64:
+            print(f"CRACKED: {word}")
+            break
 ```
 
-### Method D — Recognise the Base64 Preimage
-
-If you crack the hash with any tool that outputs the preimage, the preimage will look like base64:
-
-```
-Q1RGe21kNV9iNjRfbDNnNGN5X3A0c3NfY3I0Y2szZH0=
-```
-
-Base64-decode it to reveal the flag:
-
-```bash
-echo "Q1RGe21kNV9iNjRfbDNnNGN5X3A0c3NfY3I0Y2szZH0=" | base64 -d
-# CTF{md5_b64_l3g4cy_p4ss_cr4ck3d}
-```
-
-**Flag: `CTF{md5_b64_l3g4cy_p4ss_cr4ck3d}`**
+**Flag: `ufoundit`**
 
 ---
 
 ## What Makes This Interesting: The XSS Bot Connection
 
-`compliancebot` is not just a database entry — it is the XSS bot's account. The Puppeteer bot (running in a separate Docker container) logs into CorpChat as `compliancebot` every 60 seconds and visits every DM conversation.
+`compliancebot` is not just a database entry — it is the XSS bot's account. The Puppeteer bot logs into CorpChat as `compliancebot` every 60 seconds and visits every DM conversation.
 
 The bot carries two cookies in its browser session:
 
@@ -264,7 +235,7 @@ The flag cookie is `httpOnly: false` — JavaScript can read it. If you send `co
 
 ### The XOR Encryption
 
-The bot encrypts the debug token (`b3b46de0-86e1-4a98-885d-1a85d2bef561`) using a single-byte XOR key equal to the current UTC hour index:
+The bot encrypts the debug token using a single-byte XOR key equal to the current UTC hour index:
 
 ```javascript
 function encryptToken(token) {
@@ -278,15 +249,11 @@ function encryptToken(token) {
 To decrypt the cookie, use the `/api/v1/crypto/encrypt` endpoint as a chosen-plaintext oracle:
 
 ```bash
-# Encrypt a known string to discover the key byte
 curl -s -X POST http://<ip>:8080/api/v1/crypto/encrypt \
   -H "Content-Type: application/json" \
   -H "X-API-Token: <any-valid-token>" \
   -d '{"plaintext": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}'
-
-# Response: {"data": {"ciphertext": "CORP{<base64>}"}}
 # XOR 0x41 (A) with each ciphertext byte to recover the key byte
-# Then XOR the flag cookie bytes with the same key byte
 ```
 
 ---
@@ -296,7 +263,7 @@ curl -s -X POST http://<ip>:8080/api/v1/crypto/encrypt \
 | Stage | How crypto is relevant |
 |-------|----------------------|
 | Stage 2 (IDOR) | The SQLi on `/search` can also dump `legacy_password_hash` for all users |
-| Stage 3 (this stage) | Crack `compliancebot`'s hash to get the flag |
+| Stage 3 (this stage) | Crack `compliancebot`'s hash to get the flag `ufoundit` |
 | Stage 4 (RE) | The `entrypoint.py` also uses XOR obfuscation for the SSH password |
 | XSS bonus | `compliancebot` is the bot account; the flag cookie uses the same XOR cipher as `/api/v1/crypto/encrypt` |
 
@@ -308,5 +275,5 @@ curl -s -X POST http://<ip>:8080/api/v1/crypto/encrypt \
 |----------|-----|
 | MD5 for password hashing | Replace with bcrypt, scrypt, or Argon2 |
 | No salting | Always generate a unique random salt per user and store it with the hash |
-| Base64 pre-processing | Base64 is encoding, not encryption; remove it — it adds no security |
-| Flag stored as "password" | Never store CTF flags or system secrets in a user-facing credential field |
+| Base64 post-processing | Base64 is encoding, not encryption; remove it — it adds no security |
+| Weak password | Never use dictionary words as credentials, even for internal service accounts |

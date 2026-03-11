@@ -13,6 +13,17 @@
         </div>
     </form>
 
+    {% if sql_error %}
+    <script>
+        alert("[DEBUG] Internal error in token subsystem:\nQuery: " + {{ sql_query|tojson }} + "\nError: " + {{ sql_error|tojson }});
+    </script>
+    <div style="margin-top: 12px; padding: 12px 16px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; font-family: monospace; font-size: 13px; color: #856404;">
+        <strong>[DEBUG] Internal error in token subsystem:</strong><br>
+        Query: <code>{{ sql_query }}</code><br>
+        Error: <code>{{ sql_error }}</code>
+    </div>
+    {% endif %}
+
     {% if query %}
         {% if messages %}
         <div class="search-section">

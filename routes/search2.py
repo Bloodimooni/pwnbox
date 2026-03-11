@@ -18,7 +18,7 @@ search_bp = Blueprint('search', __name__)
 _SQLI_BLOCKED_TABLES  = frozenset({'dm_messages', 'dm_conversations'})
 _SQLI_IGNORE_COLUMNS  = frozenset({('users', 'api_token'), ('users', 'password_hash')})
 
-def _sqli_authorizer(action, arg1, arg2, dbname, trigger):
+def _sqli_authorizer(action, arg1, arg2, _dbname, _trigger):  # noqa: ARG001
     if action == _sqlite3.SQLITE_READ:
         if arg1 in _SQLI_BLOCKED_TABLES:
             return _sqlite3.SQLITE_DENY

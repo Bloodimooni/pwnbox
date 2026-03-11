@@ -44,6 +44,9 @@ zip -r "$OUT" . \
     --exclude "documentation/*" \
     --exclude "infra/*" \
     --exclude "CTF_Info.pdf" \
+    --exclude "*.csv" \
+    --exclude "*.pdf" \
+    --exclude "*.log" \
     --exclude "reversing-challenge/xor_encode.c" \
     --exclude "reversing-challenge/corpchat-admin" \
     --exclude "bot/node_modules/*" \

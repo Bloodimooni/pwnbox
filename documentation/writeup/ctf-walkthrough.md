@@ -91,7 +91,7 @@ Navigate to `/search/`. The search handler runs two queries: a normal full-text 
 
 ```python
 # routes/search2.py (vulnerable code)
-sql = f"SELECT id, username, api_token FROM users WHERE api_token = '{query}'"
+sql = f"SELECT id, username, display_name FROM users WHERE api_token = '{query}'"
 ```
 
 ### Confirming the injection point
@@ -106,11 +106,11 @@ The page fires a JavaScript `alert()` and renders an inline debug banner:
 
 ```
 [DEBUG] Internal error in token subsystem:
-Query: SELECT id, username, api_token FROM users WHERE api_token = '''
+Query: SELECT id, username, display_name FROM users WHERE api_token = '''
 Error: near "'": syntax error
 ```
 
-This reveals the full query structure, confirms string-based injection after `api_token = '`, and shows all 3 column names needed for a UNION attack.
+This reveals the full query structure, confirms string-based injection after `api_token = '`, and shows all 3 column positions needed for a UNION attack.
 
 ### Inject a UNION payload to dump the `password_resets` table:
 

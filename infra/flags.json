@@ -1,7 +1,7 @@
 [
   "CTF{exposed_git_repository_secret}",
   "CTF{idor_token_auth_bypass_privesc_complete}",
-  "CTF{md5_b64_l3g4cy_p4ss_cr4ck3d}",
+  "CTF{ufoundit}",
   "CTF{r3v_3ng_b4ackd00r_4cc3ss!}",
   "CTF{w1ldcard_t4r_g0t_r00t!}"
 ]

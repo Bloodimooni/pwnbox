@@ -224,7 +224,7 @@ def refresh_bot(cfg, instances):
         f"-e POLL_MS=60000 "
         f"-e CHROMIUM_PATH=/usr/bin/chromium "
         f"{netbird_env}"
-        f"-v {_BOT_TARGETS_FILE}:/data/bot_targets.json:ro "
+        f"-v {_BOT_TARGETS_FILE}:/data/bot_targets.json:ro,z "
         f"--restart unless-stopped "
         f"{bot_image}",
         check=False

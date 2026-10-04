@@ -348,10 +348,12 @@
             <!-- Register -->
             <div class="auth-form" id="form-register">
                 <div class="alert alert-error" id="register-error"></div>
+                {% if event_password_required %}
                 <div class="form-group">
                     <label>Event Password</label>
                     <input type="password" id="reg-event" placeholder="Required to register">
                 </div>
+                {% endif %}
                 <div class="form-group">
                     <label>Username</label>
                     <input type="text" id="reg-user" autocomplete="username">
@@ -581,7 +583,7 @@ async function doRegister() {
             body: {
                 username: document.getElementById('reg-user').value,
                 password: document.getElementById('reg-pass').value,
-                event_password: document.getElementById('reg-event').value,
+                event_password: document.getElementById('reg-event')?.value || '',
             }
         });
         await initSession();

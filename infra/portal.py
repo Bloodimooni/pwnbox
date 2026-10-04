@@ -168,7 +168,8 @@ def index():
 def login_page():
     cfg = load_config()
     ttl = cfg.getint("general", "instance_ttl_hours")
-    return render_template("portal.html", ttl_hours=ttl)
+    event_pw_required = bool(os.environ.get("EVENT_PASSWORD") or cfg.get("portal", "event_password", fallback=""))
+    return render_template("portal.html", ttl_hours=ttl, event_password_required=event_pw_required)
 
 
 # --- Auth API ---
@@ -194,8 +195,8 @@ def api_register():
         return jsonify({"error": "Password must be at least 4 characters"}), 400
 
     cfg = load_config()
-    expected_event_pw = cfg.get("portal", "event_password", fallback="")
-    if not expected_event_pw or event_password != expected_event_pw:
+    expected_event_pw = os.environ.get("EVENT_PASSWORD") or cfg.get("portal", "event_password", fallback="")
+    if expected_event_pw and event_password != expected_event_pw:
         return jsonify({"error": "Invalid event password"}), 403
 
     users = load_users()
